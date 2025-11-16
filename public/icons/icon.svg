@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect width="128" height="128" rx="20" fill="#3B82F6"/>
+
+  <!-- Eye symbol (representing privacy/redaction) -->
+  <g transform="translate(64, 64)">
+    <!-- Eye outline -->
+    <ellipse cx="0" cy="0" rx="40" ry="25" fill="none" stroke="white" stroke-width="4"/>
+
+    <!-- Crossed out symbol (redaction) -->
+    <line x1="-45" y1="-30" x2="45" y2="30" stroke="white" stroke-width="6" stroke-linecap="round"/>
+    <line x1="-45" y1="30" x2="45" y2="-30" stroke="white" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,54 @@
+{
+  "name": "redactly",
+  "version": "0.1.0",
+  "description": "A privacy-focused browser extension built with TypeScript that automatically redacts sensitive information before submitting to AI services and restores it when copying responses.",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run prepare-manifests && vite",
+    "dev:chrome": "npm run prepare-manifests && cross-env BROWSER=chrome vite",
+    "dev:firefox": "npm run prepare-manifests && cross-env BROWSER=firefox vite",
+    "build": "npm run prepare-manifests && npm run build:chrome && npm run build:firefox",
+    "build:chrome": "tsc && cross-env BROWSER=chrome vite build",
+    "build:firefox": "tsc && cross-env BROWSER=firefox vite build",
+    "prepare-manifests": "node scripts/build-manifests.js",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "chrome-extension",
+    "privacy",
+    "redaction",
+    "typescript",
+    "react",
+    "vite"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.2.1",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/chrome": "^0.1.27",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
+    "@typescript-eslint/parser": "^8.46.3",
+    "@vitejs/plugin-react": "^5.1.0",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.1"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "Redactly",
+  "version": "0.1.0",
+  "description": "A privacy-focused browser extension that automatically redacts sensitive information before submitting to AI services and restores it when copying responses.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://chat.deepseek.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["src/content-scripts/chatgpt.ts"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["src/content-scripts/claude.ts"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://chat.deepseek.com/*"],
+      "js": ["src/content-scripts/deepseek.ts"],
+      "run_at": "document_idle"
+    }
+  ]
+}
