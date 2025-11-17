@@ -39,12 +39,12 @@ export const SiteSettings: React.FC = () => {
 
       <div className="space-y-4">
         {sites.map((site) => (
-          <div key={site.id} className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700 last:border-0">
+          <div key={site.id} className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-800 last:border-0">
             <div>
               <h3 className="font-medium text-gray-900 dark:text-white">
                 {site.name}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 {site.description}
               </p>
             </div>

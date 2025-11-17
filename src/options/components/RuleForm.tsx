@@ -90,7 +90,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({ onSubmit }) => {
             type="checkbox"
             checked={caseSensitive}
             onChange={(e) => setCaseSensitive(e.target.checked)}
-            className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 checked:bg-gray-900 dark:checked:bg-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white accent-gray-900 dark:accent-white"
           />
           <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
             Case sensitive

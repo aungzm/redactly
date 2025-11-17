@@ -27,15 +27,15 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+        <div className="relative bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full border border-gray-200 dark:border-gray-800">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               {title}
             </h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
             >
               <svg
                 className="w-6 h-6"
@@ -52,11 +52,11 @@ export const Modal: React.FC<ModalProps> = ({
           </div>
 
           {/* Body */}
-          <div className="p-4">{children}</div>
+          <div className="p-4 text-gray-900 dark:text-gray-100">{children}</div>
 
           {/* Footer */}
           {footer && (
-            <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-end gap-2 p-4 border-t border-gray-200 dark:border-gray-800">
               {footer}
             </div>
           )}

@@ -25,17 +25,17 @@ export const Toggle: React.FC<ToggleProps> = ({
         />
         <div
           className={`block w-14 h-8 rounded-full transition-colors ${
-            checked ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-600'
+            checked ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-gray-700'
           } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         />
         <div
-          className={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${
+          className={`absolute left-1 top-1 bg-white dark:bg-gray-900 w-6 h-6 rounded-full transition-transform ${
             checked ? 'transform translate-x-6' : ''
           }`}
         />
       </div>
       {label && (
-        <span className="ml-3 text-gray-700 dark:text-gray-300 font-medium">
+        <span className="ml-3 text-gray-900 dark:text-gray-100 font-medium">
           {label}
         </span>
       )}

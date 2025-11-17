@@ -4,8 +4,10 @@ import { RulesCounter } from './components/RulesCounter';
 import { QuickActions } from './components/QuickActions';
 import { useStorage } from '../hooks/useStorage';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { useTheme } from '../hooks/useTheme';
 
 export const Popup: React.FC = () => {
+  useTheme(); // Apply theme to popup
   const { rules, loading: rulesLoading } = useStorage();
   const { currentSite, isEnabled, toggleSite, loading: siteLoading } = useSiteSettings();
 

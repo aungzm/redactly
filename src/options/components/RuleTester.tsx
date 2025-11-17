@@ -32,7 +32,7 @@ export const RuleTester: React.FC<RuleTesterProps> = ({ rules }) => {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
             Input Text
           </label>
           <textarea
@@ -54,10 +54,10 @@ export const RuleTester: React.FC<RuleTesterProps> = ({ rules }) => {
 
         {outputText && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
               Output ({appliedRulesCount} rule{appliedRulesCount !== 1 ? 's' : ''} applied)
             </label>
-            <div className="input-field min-h-[100px] bg-gray-50 dark:bg-gray-700 whitespace-pre-wrap">
+            <div className="input-field min-h-[100px] bg-gray-50 dark:bg-gray-800 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
               {outputText}
             </div>
           </div>
