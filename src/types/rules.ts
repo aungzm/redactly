@@ -1,4 +1,4 @@
-export type RuleType = 'exact' | 'pattern' | 'regex';
+export type RuleType = 'exact' | 'regex';
 
 export interface Rule {
   id: string;                    // UUID v4
@@ -6,7 +6,7 @@ export interface Rule {
   placeholder: string;           // Replacement text
   type: RuleType;                // Matching type
   enabled: boolean;              // Active status
-  caseSensitive: boolean;        // Case sensitivity (for exact/pattern)
+  caseSensitive: boolean;        // Case sensitivity (for exact/regex)
   createdAt: string;            // ISO 8601 timestamp
   updatedAt: string;            // ISO 8601 timestamp
 }

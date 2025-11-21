@@ -80,8 +80,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({ onSubmit }) => {
           onChange={(e) => setType(e.target.value as RuleType)}
           options={[
             { value: 'exact', label: 'Exact Match' },
-            { value: 'pattern', label: 'Pattern (Phase 3)' },
-            { value: 'regex', label: 'Regex (Phase 3)' },
+            { value: 'regex', label: 'Regex' },
           ]}
         />
 
@@ -93,7 +92,7 @@ export const RuleForm: React.FC<RuleFormProps> = ({ onSubmit }) => {
             className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 checked:bg-gray-900 dark:checked:bg-white focus:ring-2 focus:ring-gray-900 dark:focus:ring-white accent-gray-900 dark:accent-white"
           />
           <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-            Case sensitive
+            Case sensitive matching
           </span>
         </label>
 

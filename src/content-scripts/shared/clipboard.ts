@@ -1,13 +1,16 @@
 import type { Rule } from '../../types';
 import { unredact } from './redactor';
 
+// Store listener reference and current rules for dynamic updates
+let currentRules: Rule[] = [];
+let currentContainerSelector: string | undefined;
+let clipboardListener: ((e: ClipboardEvent) => void) | null = null;
+
 /**
- * Set up clipboard interception for un-redaction
- * @param rules - Array of redaction rules
- * @param containerSelector - Optional selector to limit clipboard interception to specific container
+ * Create the clipboard event listener
  */
-export function setupClipboard(rules: Rule[], containerSelector?: string): void {
-  document.addEventListener('copy', (e: ClipboardEvent) => {
+function createClipboardListener(rules: Rule[], containerSelector?: string): (e: ClipboardEvent) => void {
+  return (e: ClipboardEvent) => {
     // If containerSelector is provided, only handle copy events within that container
     if (containerSelector) {
       const target = e.target as HTMLElement;
@@ -51,7 +54,19 @@ export function setupClipboard(rules: Rule[], containerSelector?: string): void 
         // Fallback to plain text only
       }
     }
-  });
+  };
+}
+
+/**
+ * Set up clipboard interception for un-redaction
+ * @param rules - Array of redaction rules
+ * @param containerSelector - Optional selector to limit clipboard interception to specific container
+ */
+export function setupClipboard(rules: Rule[], containerSelector?: string): void {
+  currentRules = rules;
+  currentContainerSelector = containerSelector;
+  clipboardListener = createClipboardListener(rules, containerSelector);
+  document.addEventListener('copy', clipboardListener);
 }
 
 /**
@@ -84,11 +99,16 @@ function unredactHTML(html: string, rules: Rule[]): string {
 
 /**
  * Update clipboard rules (call this when rules change)
- * @param _newRules - Updated array of rules
+ * @param newRules - Updated array of rules
  */
-export function updateClipboardRules(_newRules: Rule[]): void {
-  // Remove old listener and add new one with updated rules
-  // Note: This is a simplified approach. In a real implementation,
-  // you might want to store the listener reference for proper cleanup
-  console.log('Clipboard rules updated. Reload the page for changes to take effect.');
+export function updateClipboardRules(newRules: Rule[]): void {
+  // Remove old listener if it exists
+  if (clipboardListener) {
+    document.removeEventListener('copy', clipboardListener);
+  }
+
+  // Update rules and create new listener
+  currentRules = newRules;
+  clipboardListener = createClipboardListener(currentRules, currentContainerSelector);
+  document.addEventListener('copy', clipboardListener);
 }

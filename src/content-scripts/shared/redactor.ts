@@ -2,7 +2,7 @@ import type { Rule, RedactionResult } from '../../types';
 
 interface CompiledRule extends Rule {
   regex?: RegExp;                // Compiled regex pattern
-  priority: number;              // For sorting (exact=3, pattern=2, regex=1)
+  priority: number;              // For sorting (exact=2, regex=1)
 }
 
 /**
@@ -17,24 +17,18 @@ export function compileRule(rule: Rule): CompiledRule {
       // For exact matches, create a regex with word boundaries
       const escapedOriginal = escapeRegExp(rule.original);
       regex = new RegExp(escapedOriginal, rule.caseSensitive ? 'g' : 'gi');
-      priority = 3;
-      break;
-
-    case 'pattern':
-      // Convert wildcard pattern to regex (future implementation)
-      // For now, treat as exact match
-      const escapedPattern = escapeRegExp(rule.original);
-      regex = new RegExp(escapedPattern, rule.caseSensitive ? 'g' : 'gi');
       priority = 2;
       break;
 
     case 'regex':
-      // Use provided regex pattern (future implementation)
+      // Use provided regex pattern directly
       try {
+        // Apply case sensitivity: if caseSensitive is true, use 'g' flag only
+        // if false, use 'gi' flags for case-insensitive matching
         regex = new RegExp(rule.original, rule.caseSensitive ? 'g' : 'gi');
       } catch (e) {
         console.error(`Invalid regex pattern in rule ${rule.id}:`, e);
-        // Fallback to exact match
+        // Fallback to exact match if regex is invalid
         const escaped = escapeRegExp(rule.original);
         regex = new RegExp(escaped, rule.caseSensitive ? 'g' : 'gi');
       }

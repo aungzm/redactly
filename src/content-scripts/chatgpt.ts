@@ -1,6 +1,6 @@
 import type { Rule } from '../types';
 import { redact } from './shared/redactor';
-import { setupClipboard } from './shared/clipboard';
+import { setupClipboard, updateClipboardRules } from './shared/clipboard';
 import {
   waitForElement,
   getRulesFromStorage,
@@ -59,6 +59,7 @@ async function init(): Promise<void> {
     onRulesChanged((newRules) => {
       log('Rules updated', newRules);
       rules = newRules;
+      updateClipboardRules(newRules);
       editModeMonitor?.updateRules(newRules);
     });
 
