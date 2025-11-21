@@ -22,7 +22,7 @@ const SELECTORS = {
 };
 
 const EDIT_MODE_CONFIG: EditModeConfig = {
-  messageSelector: '[role="article"]',
+  messageSelector: 'body',
   editFieldSelector: 'textarea[aria-label="Edit prompt"]',
   saveButtonSelector: 'button[aria-label="Update message"]',
   cancelButtonSelector: 'button[aria-label="Cancel"]',
