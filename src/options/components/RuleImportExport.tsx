@@ -81,14 +81,14 @@ export const RuleImportExport: React.FC<RuleImportExportProps> = ({
               disabled={rules.length === 0}
               variant="secondary"
             >
-              📥 Export Rules
+              Export Rules
             </Button>
             <Button
               onClick={handleImportClick}
               disabled={isImporting}
               variant="secondary"
             >
-              {isImporting ? 'Importing...' : '📤 Import Rules'}
+              {isImporting ? 'Importing...' : 'Import Rules'}
             </Button>
           </div>
         </div>

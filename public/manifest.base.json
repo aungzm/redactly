@@ -14,7 +14,8 @@
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://claude.ai/*",
-    "https://chat.deepseek.com/*"
+    "https://chat.deepseek.com/*",
+    "https://gemini.google.com/*"
   ],
   "content_scripts": [
     {
@@ -30,6 +31,11 @@
     {
       "matches": ["https://chat.deepseek.com/*"],
       "js": ["src/content-scripts/deepseek.ts"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["src/content-scripts/gemini.ts"],
       "run_at": "document_idle"
     }
   ]

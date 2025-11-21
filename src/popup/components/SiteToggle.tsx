@@ -16,7 +16,7 @@ export const SiteToggle: React.FC<SiteToggleProps> = ({ site, enabled, onToggle 
           This site is not supported by Redactly.
         </p>
         <p className="text-gray-500 dark:text-gray-500 text-xs mt-1">
-          Supported: ChatGPT, Claude, DeepSeek
+          Supported: ChatGPT, Claude, DeepSeek, Gemini
         </p>
       </div>
     );
@@ -26,6 +26,7 @@ export const SiteToggle: React.FC<SiteToggleProps> = ({ site, enabled, onToggle 
     'chatgpt.com': 'ChatGPT',
     'claude.ai': 'Claude',
     'chat.deepseek.com': 'DeepSeek',
+    'gemini.google.com': 'Gemini',
   };
 
   return (

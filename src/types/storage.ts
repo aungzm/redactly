@@ -1,6 +1,6 @@
 import type { Rule } from './rules';
 
-export type SupportedSite = 'chatgpt.com' | 'claude.ai' | 'chat.deepseek.com';
+export type SupportedSite = 'chatgpt.com' | 'claude.ai' | 'chat.deepseek.com' | 'gemini.google.com';
 
 export interface SiteSettings {
   enabled: boolean;

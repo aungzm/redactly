@@ -25,6 +25,12 @@ export const SiteSettings: React.FC = () => {
       description: 'Enable redaction on chat.deepseek.com',
       enabled: true,
     },
+    {
+      id: 'gemini.google.com',
+      name: 'Gemini',
+      description: 'Enable redaction on gemini.google.com',
+      enabled: true,
+    },
   ];
 
   if (loading) {
