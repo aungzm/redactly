@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 import { useStorage } from './useStorage';
 import type { Rule } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { importRules as validateImport, getRulesToImport } from '../content-scripts/shared/ruleImportExport';
+import type { ImportResult } from '../content-scripts/shared/ruleImportExport';
 
 export const useRules = () => {
   const { rules, loading } = useStorage();
@@ -53,6 +55,35 @@ export const useRules = () => {
     [rules]
   );
 
+  const importRulesFromJson = useCallback(
+    async (jsonContent: string): Promise<ImportResult> => {
+      // Validate import
+      const validationResult = validateImport(jsonContent, rules);
+      
+      if (!validationResult.success) {
+        return validationResult;
+      }
+
+      // Get rules to import
+      const rulesToImport = getRulesToImport(jsonContent);
+
+      // Add new IDs and timestamps to imported rules
+      const newRules = rulesToImport.map((rule) => ({
+        ...rule,
+        id: uuidv4(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      // Merge with existing rules
+      const updatedRules = [...rules, ...newRules];
+      await chrome.storage.local.set({ rules: updatedRules });
+
+      return validationResult;
+    },
+    [rules]
+  );
+
   return {
     rules,
     loading,
@@ -60,5 +91,6 @@ export const useRules = () => {
     updateRule,
     deleteRule,
     toggleRule,
+    importRulesFromJson,
   };
 };

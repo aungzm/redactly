@@ -3,6 +3,7 @@ import { RuleList } from './components/RuleList';
 import { RuleForm } from './components/RuleForm';
 import { RuleTester } from './components/RuleTester';
 import { SiteSettings } from './components/SiteSettings';
+import { RuleImportExport } from './components/RuleImportExport';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useRules } from '../hooks/useRules';
 import { useTheme } from '../hooks/useTheme';
@@ -10,7 +11,7 @@ import { useTheme } from '../hooks/useTheme';
 type Tab = 'rules' | 'sites' | 'test';
 
 export const Options: React.FC = () => {
-  const { rules, addRule, updateRule, deleteRule, loading } = useRules();
+  const { rules, addRule, updateRule, deleteRule, loading, importRulesFromJson } = useRules();
   useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('rules');
 
@@ -76,6 +77,7 @@ export const Options: React.FC = () => {
         {activeTab === 'rules' && (
           <>
             <RuleForm onSubmit={addRule} />
+            <RuleImportExport rules={rules} onImport={importRulesFromJson} />
             <RuleList rules={rules} onUpdate={updateRule} onDelete={deleteRule} />
           </>
         )}
