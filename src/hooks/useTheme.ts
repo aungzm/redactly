@@ -6,7 +6,7 @@ const THEME_KEY = 'theme';
 
 const isChromeStorageAvailable = (): boolean => {
   try {
-    // Some environments (dev server) won't have chrome.* available
+    // Some environments (dev server) won't have chrome.* APIs available
     return typeof chrome !== 'undefined' && !!chrome.storage && !!chrome.storage.sync;
   } catch {
     return false;
