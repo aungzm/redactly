@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { useStorage } from './useStorage';
 import type { Rule } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { importRules as validateImport, getRulesToImport } from '../content-scripts/shared/ruleImportExport';
-import type { ImportResult } from '../content-scripts/shared/ruleImportExport';
+import { importRules as validateImport, getRulesToImport, getRulesToImportWithConflictResolution } from '../content-scripts/shared/ruleImportExport';
+import type { ImportResult, ConflictResolutionMap } from '../content-scripts/shared/ruleImportExport';
 
 export const useRules = () => {
   const { rules, loading } = useStorage();
@@ -84,6 +84,50 @@ export const useRules = () => {
     [rules]
   );
 
+  const importRulesWithConflictResolution = useCallback(
+    async (jsonContent: string, resolutionMap: ConflictResolutionMap): Promise<ImportResult> => {
+      // Get rules with conflict resolution applied
+      const { rulesToImport, rulesToOverride } = getRulesToImportWithConflictResolution(
+        jsonContent,
+        rules,
+        resolutionMap
+      );
+
+      // Add new IDs and timestamps to new imported rules
+      const newRules = rulesToImport.map((rule) => ({
+        ...rule,
+        id: uuidv4(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      // Update existing rules that are being overridden
+      const updatedExistingRules = rules.map((existingRule) => {
+        const override = rulesToOverride.find((r) => r.original === existingRule.original);
+        if (override) {
+          return {
+            ...existingRule,
+            placeholder: override.placeholder,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return existingRule;
+      });
+
+      // Merge: keep updated existing rules + add new rules
+      const finalRules = [...updatedExistingRules, ...newRules];
+      await chrome.storage.local.set({ rules: finalRules });
+
+      const totalImported = rulesToImport.length + rulesToOverride.length;
+      return {
+        success: true,
+        message: `Successfully imported ${totalImported} rule(s).${rulesToOverride.length > 0 ? ` (${rulesToOverride.length} overridden)` : ''}`,
+        importedCount: totalImported,
+      };
+    },
+    [rules]
+  );
+
   return {
     rules,
     loading,
@@ -92,5 +136,6 @@ export const useRules = () => {
     deleteRule,
     toggleRule,
     importRulesFromJson,
+    importRulesWithConflictResolution,
   };
 };

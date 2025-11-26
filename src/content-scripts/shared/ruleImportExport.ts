@@ -11,6 +11,14 @@ export interface ImportResult {
   message: string;
   duplicates?: string[];
   importedCount?: number;
+  hasConflicts?: boolean;
+  conflictingRules?: string[];
+}
+
+export type ConflictResolution = 'cancel' | 'override' | 'skip';
+
+export interface ConflictResolutionMap {
+  [ruleOriginal: string]: ConflictResolution;
 }
 
 /**
@@ -26,8 +34,8 @@ export const exportRules = (rules: Rule[]): string => {
 };
 
 /**
- * Import rules from JSON with duplicate detection
- * Duplicates are detected by comparing the 'original' field (the rule key)
+ * Import rules from JSON with conflict detection
+ * Returns conflicts instead of failing, allowing user to choose resolution
  */
 export const importRules = (
   jsonContent: string,
@@ -49,8 +57,8 @@ export const importRules = (
       existingRules.map((rule) => [rule.original, rule])
     );
 
-    // Check for duplicates
-    const duplicates: string[] = [];
+    // Check for conflicts
+    const conflictingRules: string[] = [];
     const rulesToImport: Rule[] = [];
 
     for (const importedRule of importData.rules) {
@@ -64,18 +72,20 @@ export const importRules = (
 
       // Check if this rule already exists
       if (existingOriginals.has(importedRule.original)) {
-        duplicates.push(importedRule.original);
+        conflictingRules.push(importedRule.original);
       } else {
         rulesToImport.push(importedRule);
       }
     }
 
-    // If there are duplicates, return error
-    if (duplicates.length > 0) {
+    // If there are conflicts, return with conflict info (not a failure)
+    if (conflictingRules.length > 0) {
       return {
         success: false,
-        message: `Cannot import: Found ${duplicates.length} duplicate rule(s). The following rule(s) already exist:\n${duplicates.map((d) => `• "${d}"`).join('\n')}\n\nPlease delete or rename the existing rule(s) before importing.`,
-        duplicates,
+        hasConflicts: true,
+        message: `Found ${conflictingRules.length} conflicting rule(s). Choose how to handle them.`,
+        conflictingRules,
+        importedCount: rulesToImport.length,
       };
     }
 
@@ -92,6 +102,39 @@ export const importRules = (
       message: `Failed to parse JSON: ${errorMessage}`,
     };
   }
+};
+
+/**
+ * Get the rules to import from JSON with conflict resolution
+ * Handles override and skip strategies for conflicting rules
+ */
+export const getRulesToImportWithConflictResolution = (
+  jsonContent: string,
+  existingRules: Rule[],
+  resolutionMap: ConflictResolutionMap
+): { rulesToImport: Rule[]; rulesToOverride: Rule[] } => {
+  const importData: ExportData = JSON.parse(jsonContent);
+  const rulesToImport: Rule[] = [];
+  const rulesToOverride: Rule[] = [];
+
+  const existingOriginals = new Map(
+    existingRules.map((rule) => [rule.original, rule])
+  );
+
+  for (const importedRule of importData.rules || []) {
+    const resolution = resolutionMap[importedRule.original] || 'skip';
+
+    if (resolution === 'override') {
+      rulesToOverride.push(importedRule);
+    } else if (resolution !== 'skip') {
+      // Only add non-conflicting rules or those not being skipped
+      if (!existingOriginals.has(importedRule.original)) {
+        rulesToImport.push(importedRule);
+      }
+    }
+  }
+
+  return { rulesToImport, rulesToOverride };
 };
 
 /**
