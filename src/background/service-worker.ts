@@ -12,6 +12,7 @@ async function initializeStorage(): Promise<void> {
       'chatgpt.com': { enabled: true, lastUsed: null },
       'claude.ai': { enabled: true, lastUsed: null },
       'chat.deepseek.com': { enabled: true, lastUsed: null },
+      'gemini.google.com': { enabled: true, lastUsed: null },
     };
     await chrome.storage.local.set({ siteSettings: defaultSiteSettings });
   }
