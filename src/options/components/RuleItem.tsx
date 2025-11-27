@@ -8,6 +8,7 @@ interface RuleItemProps {
   rule: Rule;
   onUpdate: (id: string, updates: Partial<Rule>) => void;
   onDelete: (id: string) => void;
+  isDragging?: boolean;
 }
 
 export const RuleItem: React.FC<RuleItemProps> = ({ rule, onUpdate, onDelete }) => {
@@ -24,26 +25,33 @@ export const RuleItem: React.FC<RuleItemProps> = ({ rule, onUpdate, onDelete }) 
 
   return (
     <>
-      <div className="card flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-mono text-sm text-gray-900 dark:text-white">
-              {rule.original}
-            </span>
-            <span className="text-gray-400 dark:text-gray-600">→</span>
-            <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
-              {rule.placeholder}
-            </span>
+      <div className="card flex items-center justify-between cursor-move hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="text-gray-400 dark:text-gray-600 cursor-grab active:cursor-grabbing flex-shrink-0">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M8 5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM8 12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM8 19a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM14 5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM14 12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM14 19a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+            </svg>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-            <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300">
-              {rule.type}
-            </span>
-            {rule.caseSensitive && (
-              <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300">
-                case-sensitive
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-sm text-gray-900 dark:text-white">
+                {rule.original}
               </span>
-            )}
+              <span className="text-gray-400 dark:text-gray-600">→</span>
+              <span className="font-mono text-sm text-gray-700 dark:text-gray-300">
+                {rule.placeholder}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+              <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300">
+                {rule.type}
+              </span>
+              {rule.caseSensitive && (
+                <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-700 dark:text-gray-300">
+                  case-sensitive
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

@@ -9,7 +9,17 @@ export const useStorage = () => {
     // Load rules from chrome.storage.local
     chrome.storage.local.get(['rules'], (result) => {
       if (result.rules) {
-        setRules(result.rules);
+        // Migrate rules to add priority field if missing
+        const migratedRules = result.rules.map((rule: any) => {
+          if (rule.priority === undefined) {
+            // Assign priority based on type and order
+            const sameTypeRules = result.rules.filter((r: any) => r.type === rule.type);
+            const priority = sameTypeRules.indexOf(rule);
+            return { ...rule, priority };
+          }
+          return rule;
+        });
+        setRules(migratedRules);
       }
       setLoading(false);
     });

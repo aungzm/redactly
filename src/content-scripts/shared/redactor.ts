@@ -2,7 +2,7 @@ import type { Rule, RedactionResult } from '../../types';
 
 interface CompiledRule extends Rule {
   regex?: RegExp;                // Compiled regex pattern
-  priority: number;              // For sorting (exact=2, regex=1)
+  sortPriority: number;          // For sorting (exact=2, regex=1, then by rule.priority)
 }
 
 /**
@@ -10,14 +10,14 @@ interface CompiledRule extends Rule {
  */
 export function compileRule(rule: Rule): CompiledRule {
   let regex: RegExp | undefined;
-  let priority: number = 1; // Default priority
+  let sortPriority: number = 1; // Default priority
 
   switch (rule.type) {
     case 'exact':
       // For exact matches, create a regex with word boundaries
       const escapedOriginal = escapeRegExp(rule.original);
       regex = new RegExp(escapedOriginal, rule.caseSensitive ? 'g' : 'gi');
-      priority = 2;
+      sortPriority = 2;
       break;
 
     case 'regex':
@@ -32,14 +32,14 @@ export function compileRule(rule: Rule): CompiledRule {
         const escaped = escapeRegExp(rule.original);
         regex = new RegExp(escaped, rule.caseSensitive ? 'g' : 'gi');
       }
-      priority = 1;
+      sortPriority = 1;
       break;
   }
 
   return {
     ...rule,
     regex,
-    priority,
+    sortPriority,
   };
 }
 
@@ -65,8 +65,13 @@ export function redact(text: string, rules: Rule[]): RedactionResult {
   const enabledRules = rules.filter((rule) => rule.enabled);
   const compiledRules = enabledRules.map(compileRule);
 
-  // Sort by priority (higher priority first)
-  compiledRules.sort((a, b) => b.priority - a.priority);
+  // Sort by type priority first (exact=2, regex=1), then by rule priority (lower number = higher priority)
+  compiledRules.sort((a, b) => {
+    if (a.sortPriority !== b.sortPriority) {
+      return b.sortPriority - a.sortPriority; // Exact (2) before regex (1)
+    }
+    return a.priority - b.priority; // Within same type, lower priority number = higher priority
+  });
 
   let redactedText = text;
   const appliedRules: string[] = [];
@@ -109,7 +114,12 @@ export function unredact(text: string, rules: Rule[]): string {
   // Apply reverse replacements (placeholder -> original)
   // Process in reverse priority order to handle overlapping rules correctly
   const compiledRules = enabledRules.map(compileRule);
-  compiledRules.sort((a, b) => a.priority - b.priority); // Lower priority first for unredaction
+  compiledRules.sort((a, b) => {
+    if (a.sortPriority !== b.sortPriority) {
+      return a.sortPriority - b.sortPriority; // Regex (1) before exact (2) for unredaction
+    }
+    return b.priority - a.priority; // Within same type, higher priority number = higher priority for unredaction
+  });
 
   for (const rule of compiledRules) {
     // Create a regex to find the placeholder

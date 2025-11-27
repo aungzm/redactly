@@ -7,6 +7,7 @@ export interface Rule {
   type: RuleType;                // Matching type
   enabled: boolean;              // Active status
   caseSensitive: boolean;        // Case sensitivity (for exact/regex)
+  priority: number;              // Priority order within rule type (lower = higher priority)
   createdAt: string;            // ISO 8601 timestamp
   updatedAt: string;            // ISO 8601 timestamp
 }

@@ -5,7 +5,7 @@ import { Select } from '../../components/Select';
 import type { Rule, RuleType } from '../../types';
 
 interface RuleFormProps {
-  onSubmit: (ruleData: Omit<Rule, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  onSubmit: (ruleData: Omit<Rule, 'id' | 'createdAt' | 'updatedAt' | 'priority'>) => void;
 }
 
 export const RuleForm: React.FC<RuleFormProps> = ({ onSubmit }) => {

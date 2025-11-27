@@ -9,9 +9,14 @@ export const useRules = () => {
   const { rules, loading } = useStorage();
 
   const addRule = useCallback(
-    async (ruleData: Omit<Rule, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (ruleData: Omit<Rule, 'id' | 'createdAt' | 'updatedAt' | 'priority'>) => {
+      // Calculate priority based on rule type
+      const sameTypeRules = rules.filter((r) => r.type === ruleData.type);
+      const priority = sameTypeRules.length;
+
       const newRule: Rule = {
         ...ruleData,
+        priority,
         id: uuidv4(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -55,6 +60,13 @@ export const useRules = () => {
     [rules]
   );
 
+  const reorderRules = useCallback(
+    async (reorderedRules: Rule[]) => {
+      await chrome.storage.local.set({ rules: reorderedRules });
+    },
+    []
+  );
+
   const importRulesFromJson = useCallback(
     async (jsonContent: string): Promise<ImportResult> => {
       // Validate import
@@ -67,13 +79,17 @@ export const useRules = () => {
       // Get rules to import
       const rulesToImport = getRulesToImport(jsonContent);
 
-      // Add new IDs and timestamps to imported rules
-      const newRules = rulesToImport.map((rule) => ({
-        ...rule,
-        id: uuidv4(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
+      // Add new IDs, timestamps, and priority to imported rules
+      const newRules = rulesToImport.map((rule, index) => {
+        const sameTypeRules = rules.filter((r) => r.type === rule.type);
+        return {
+          ...rule,
+          priority: sameTypeRules.length + index,
+          id: uuidv4(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
 
       // Merge with existing rules
       const updatedRules = [...rules, ...newRules];
@@ -93,13 +109,17 @@ export const useRules = () => {
         resolutionMap
       );
 
-      // Add new IDs and timestamps to new imported rules
-      const newRules = rulesToImport.map((rule) => ({
-        ...rule,
-        id: uuidv4(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
+      // Add new IDs, timestamps, and priority to new imported rules
+      const newRules = rulesToImport.map((rule, index) => {
+        const sameTypeRules = rules.filter((r) => r.type === rule.type);
+        return {
+          ...rule,
+          priority: sameTypeRules.length + index,
+          id: uuidv4(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
 
       // Update existing rules that are being overridden
       const updatedExistingRules = rules.map((existingRule) => {
@@ -135,6 +155,7 @@ export const useRules = () => {
     updateRule,
     deleteRule,
     toggleRule,
+    reorderRules,
     importRulesFromJson,
     importRulesWithConflictResolution,
   };
