@@ -2,6 +2,50 @@
 
 A privacy-focused browser extension that automatically redacts sensitive information before submitting to AI services and restores it when copying responses.
 
+## Features
+
+Redactly provides comprehensive privacy protection for your interactions with AI services through intelligent redaction and restoration of sensitive data.
+
+### Core Redaction Capabilities
+
+- **Automatic Redaction**: Automatically redacts sensitive information before it's sent to AI services, protecting your privacy while you work
+- **Smart Restoration**: Restores original sensitive data when you copy responses from AI services, so you get complete, usable information
+- **Flexible Rule System**: Create custom redaction rules using exact text matching or powerful regular expressions to target any type of sensitive data
+- **Priority-Based Processing**: Rules are applied in priority order, allowing you to control which patterns take precedence when multiple rules could match
+
+### Supported AI Services
+
+Redactly works seamlessly with the following AI platforms:
+- ChatGPT
+- Claude
+- Google Gemini
+- DeepSeek
+
+### Rule Management
+
+- **Multiple Rule Types**: Choose between exact text matching for simple replacements or regex patterns for complex data patterns
+- **Case Sensitivity Control**: Optionally make rules case-sensitive for more precise matching
+- **Enable/Disable Rules**: Toggle individual rules on or off without deleting them, giving you flexibility to test different configurations
+- **Rule Prioritization**: Reorder rules to control the sequence in which they're applied to your text
+- **Import/Export**: Backup your rules or share configurations by exporting to JSON and importing from files
+
+### Site-Level Control
+
+- **Per-Site Settings**: Enable or disable redaction on a per-site basis, giving you granular control over which AI services use your rules
+- **Quick Toggle**: Use the extension popup to quickly enable or disable redaction for the current site
+- **Rules Counter**: See at a glance how many rules are active and how many total rules you have configured
+
+### Testing and Validation
+
+- **Rule Tester**: Built-in testing interface to validate your redaction rules before using them in production
+- **Real-Time Preview**: Test your rules against sample text to ensure they work as expected
+
+### User Experience
+
+- **Dark Mode Support**: Full dark mode support for comfortable use in any lighting condition
+- **Intuitive Interface**: Clean, organized options page with dedicated tabs for rules management, site settings, and testing
+- **Responsive Design**: Works smoothly across different screen sizes and browser windows
+
 ## Development
 
 ### Prerequisites
