@@ -116,10 +116,10 @@ export const RuleImportExport: React.FC<RuleImportExportProps> = ({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Import / Export Rules
+              Share Rules
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Backup your rules or share them with others
+              Export rules to share with others or import shared rules
             </p>
           </div>
           <div className="flex gap-3">
@@ -128,14 +128,14 @@ export const RuleImportExport: React.FC<RuleImportExportProps> = ({
               disabled={rules.length === 0}
               variant="secondary"
             >
-              Export Rules
+              Export
             </Button>
             <Button
               onClick={handleImportClick}
               disabled={isImporting}
               variant="secondary"
             >
-              {isImporting ? 'Importing...' : 'Import Rules'}
+              {isImporting ? 'Importing...' : 'Import'}
             </Button>
           </div>
         </div>

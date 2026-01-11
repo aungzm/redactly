@@ -4,11 +4,12 @@ import { RuleForm } from './components/RuleForm';
 import { RuleTester } from './components/RuleTester';
 import { SiteSettings } from './components/SiteSettings';
 import { RuleImportExport } from './components/RuleImportExport';
+import { BackupRestore } from './components/BackupRestore';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useRules } from '../hooks/useRules';
 import { useTheme } from '../hooks/useTheme';
 
-type Tab = 'rules' | 'sites' | 'test';
+type Tab = 'rules' | 'sites' | 'test' | 'backup';
 
 export const Options: React.FC = () => {
   const { rules, addRule, updateRule, deleteRule, reorderRules, loading, importRulesFromJson, importRulesWithConflictResolution } = useRules();
@@ -71,6 +72,16 @@ export const Options: React.FC = () => {
           >
             Test
           </button>
+          <button
+            className={`pb-2 px-4 transition-colors ${
+              activeTab === 'backup'
+                ? 'border-b-2 border-gray-900 text-gray-900 dark:border-white dark:text-white font-medium'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+            onClick={() => setActiveTab('backup')}
+          >
+            Backup
+          </button>
         </nav>
 
         {/* Tab Content */}
@@ -90,10 +101,12 @@ export const Options: React.FC = () => {
 
         {activeTab === 'test' && <RuleTester rules={rules} />}
 
+        {activeTab === 'backup' && <BackupRestore />}
+
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Redactly v0.1.0 - Phase 1 MVP
+            Redactly v0.1.0
           </p>
         </div>
       </div>
