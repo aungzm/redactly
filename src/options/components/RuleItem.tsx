@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../../components/Button';
 import { Toggle } from '../../components/Toggle';
 import { Modal } from '../../components/Modal';
+import { Checkbox } from '../../components/Checkbox';
 import type { Rule } from '../../types';
 
 interface RuleItemProps {
@@ -9,9 +10,19 @@ interface RuleItemProps {
   onUpdate: (id: string, updates: Partial<Rule>) => void;
   onDelete: (id: string) => void;
   isDragging?: boolean;
+  isSelectMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export const RuleItem: React.FC<RuleItemProps> = ({ rule, onUpdate, onDelete }) => {
+export const RuleItem: React.FC<RuleItemProps> = ({
+  rule,
+  onUpdate,
+  onDelete,
+  isSelectMode = false,
+  isSelected = false,
+  onToggleSelect,
+}) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const handleToggle = () => {
@@ -23,11 +34,32 @@ export const RuleItem: React.FC<RuleItemProps> = ({ rule, onUpdate, onDelete }) 
     setShowDeleteModal(false);
   };
 
+  const handleRowClick = () => {
+    if (isSelectMode && onToggleSelect) {
+      onToggleSelect(rule.id);
+    }
+  };
+
   return (
     <>
-      <div className="card flex items-center justify-between cursor-move hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+      <div
+        className={`card flex items-center justify-between ${
+          isSelectMode ? 'cursor-pointer' : 'cursor-move'
+        } hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+          isSelected ? 'ring-2 ring-gray-900 dark:ring-white' : ''
+        }`}
+        onClick={handleRowClick}
+      >
         <div className="flex items-center gap-3 flex-1">
-          <div className="text-gray-400 dark:text-gray-600 cursor-grab active:cursor-grabbing flex-shrink-0">
+          {isSelectMode && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isSelected}
+                onChange={() => onToggleSelect?.(rule.id)}
+              />
+            </div>
+          )}
+          <div className={`text-gray-400 dark:text-gray-600 ${isSelectMode ? 'hidden' : 'cursor-grab active:cursor-grabbing'} flex-shrink-0`}>
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M8 5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM8 12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM8 19a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM14 5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM14 12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM14 19a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
             </svg>
@@ -55,15 +87,19 @@ export const RuleItem: React.FC<RuleItemProps> = ({ rule, onUpdate, onDelete }) 
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Toggle checked={rule.enabled} onChange={handleToggle} />
-          <Button
-            variant="danger"
-            onClick={() => setShowDeleteModal(true)}
-            className="!px-3 !py-1 text-sm"
-          >
-            Delete
-          </Button>
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+          {!isSelectMode && (
+            <>
+              <Toggle checked={rule.enabled} onChange={handleToggle} />
+              <Button
+                variant="danger"
+                onClick={() => setShowDeleteModal(true)}
+                className="!px-3 !py-1 text-sm"
+              >
+                Delete
+              </Button>
+            </>
+          )}
         </div>
       </div>
 

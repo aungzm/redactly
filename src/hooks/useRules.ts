@@ -67,6 +67,75 @@ export const useRules = () => {
     []
   );
 
+  const bulkDeleteRules = useCallback(
+    async (ids: string[]) => {
+      const updatedRules = rules.filter((rule) => !ids.includes(rule.id));
+      // Recalculate priorities for remaining rules
+      const exactRules = updatedRules
+        .filter((r) => r.type === 'exact')
+        .sort((a, b) => a.priority - b.priority)
+        .map((r, i) => ({ ...r, priority: i }));
+      const regexRules = updatedRules
+        .filter((r) => r.type === 'regex')
+        .sort((a, b) => a.priority - b.priority)
+        .map((r, i) => ({ ...r, priority: i }));
+      await chrome.storage.local.set({ rules: [...exactRules, ...regexRules] });
+    },
+    [rules]
+  );
+
+  const bulkToggleRules = useCallback(
+    async (ids: string[], enabled: boolean) => {
+      const updatedRules = rules.map((rule) =>
+        ids.includes(rule.id)
+          ? { ...rule, enabled, updatedAt: new Date().toISOString() }
+          : rule
+      );
+      await chrome.storage.local.set({ rules: updatedRules });
+    },
+    [rules]
+  );
+
+  const bulkUpdateType = useCallback(
+    async (ids: string[], newType: 'exact' | 'regex') => {
+      const now = new Date().toISOString();
+
+      // Separate rules into those being changed and those not
+      const unchangedRules = rules.filter((r) => !ids.includes(r.id));
+      const changingRules = rules.filter((r) => ids.includes(r.id));
+
+      // Get max priority of target type among unchanged rules
+      const targetTypeUnchanged = unchangedRules.filter((r) => r.type === newType);
+      const maxPriority = targetTypeUnchanged.length > 0
+        ? Math.max(...targetTypeUnchanged.map((r) => r.priority))
+        : -1;
+
+      // Update changing rules with new type and priorities
+      const updatedChangingRules = changingRules
+        .sort((a, b) => a.priority - b.priority)
+        .map((rule, index) => ({
+          ...rule,
+          type: newType,
+          priority: maxPriority + 1 + index,
+          updatedAt: now,
+        }));
+
+      // Recalculate all priorities
+      const allRules = [...unchangedRules, ...updatedChangingRules];
+      const exactRules = allRules
+        .filter((r) => r.type === 'exact')
+        .sort((a, b) => a.priority - b.priority)
+        .map((r, i) => ({ ...r, priority: i }));
+      const regexRules = allRules
+        .filter((r) => r.type === 'regex')
+        .sort((a, b) => a.priority - b.priority)
+        .map((r, i) => ({ ...r, priority: i }));
+
+      await chrome.storage.local.set({ rules: [...exactRules, ...regexRules] });
+    },
+    [rules]
+  );
+
   const importRulesFromJson = useCallback(
     async (jsonContent: string): Promise<ImportResult> => {
       // Validate import
@@ -156,6 +225,9 @@ export const useRules = () => {
     deleteRule,
     toggleRule,
     reorderRules,
+    bulkDeleteRules,
+    bulkToggleRules,
+    bulkUpdateType,
     importRulesFromJson,
     importRulesWithConflictResolution,
   };
