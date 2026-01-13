@@ -12,7 +12,19 @@ import { useTheme } from '../hooks/useTheme';
 type Tab = 'rules' | 'sites' | 'test' | 'backup';
 
 export const Options: React.FC = () => {
-  const { rules, addRule, updateRule, deleteRule, reorderRules, loading, importRulesFromJson, importRulesWithConflictResolution } = useRules();
+  const {
+    rules,
+    addRule,
+    updateRule,
+    deleteRule,
+    reorderRules,
+    bulkDeleteRules,
+    bulkToggleRules,
+    bulkUpdateType,
+    loading,
+    importRulesFromJson,
+    importRulesWithConflictResolution,
+  } = useRules();
   useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('rules');
 
@@ -93,7 +105,15 @@ export const Options: React.FC = () => {
               onImport={importRulesFromJson}
               onImportWithConflictResolution={importRulesWithConflictResolution}
             />
-            <RuleList rules={rules} onUpdate={updateRule} onDelete={deleteRule} onReorder={reorderRules} />
+            <RuleList
+              rules={rules}
+              onUpdate={updateRule}
+              onDelete={deleteRule}
+              onReorder={reorderRules}
+              onBulkDelete={bulkDeleteRules}
+              onBulkToggle={bulkToggleRules}
+              onBulkUpdateType={bulkUpdateType}
+            />
           </>
         )}
 
