@@ -129,18 +129,31 @@ npm run dev:firefox
 npm run dev
 ```
 
-### Other Commands
+### Code Quality
+
+#### Type Checking
 
 ```bash
-# Type checking
 npm run type-check
+```
 
-# Linting
+Runs the TypeScript compiler without emitting files to check for type errors across the entire codebase. This is useful for catching type issues before building.
+
+#### Linting
+
+```bash
 npm run lint
+```
 
-# Preview build
+Runs ESLint to check for code quality issues, unused variables, and React-specific best practices. Uses the flat config format (ESLint 9+) with TypeScript and React hooks support.
+
+#### Preview Build
+
+```bash
 npm run preview
 ```
+
+Starts a local server to preview the production build output.
 
 ## Project Structure
 
