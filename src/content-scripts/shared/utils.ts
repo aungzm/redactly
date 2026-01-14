@@ -43,21 +43,19 @@ export function waitForElement(selector: string, timeout: number = 10000): Promi
  * @param wait - Wait time in milliseconds
  * @returns Debounced function
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
-  return function (this: any, ...args: Parameters<T>) {
-    const context = this;
-
+  return function (...args: Parameters<T>) {
     if (timeout) {
       clearTimeout(timeout);
     }
 
     timeout = setTimeout(() => {
-      func.apply(context, args);
+      func(...args);
     }, wait);
   };
 }
@@ -91,7 +89,7 @@ export function onRulesChanged(callback: (rules: Rule[]) => void): void {
  * @param message - Message to log
  * @param data - Optional data to log
  */
-export function log(message: string, data?: any): void {
+export function log(message: string, data?: unknown): void {
   const prefix = '[Redactly]';
   if (data !== undefined) {
     console.log(prefix, message, data);
@@ -105,7 +103,7 @@ export function log(message: string, data?: any): void {
  * @param message - Error message
  * @param error - Optional error object
  */
-export function logError(message: string, error?: any): void {
+export function logError(message: string, error?: unknown): void {
   const prefix = '[Redactly Error]';
   if (error !== undefined) {
     console.error(prefix, message, error);

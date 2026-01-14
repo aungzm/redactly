@@ -13,12 +13,13 @@ export function compileRule(rule: Rule): CompiledRule {
   let sortPriority: number = 1; // Default priority
 
   switch (rule.type) {
-    case 'exact':
+    case 'exact': {
       // For exact matches, create a regex with word boundaries
       const escapedOriginal = escapeRegExp(rule.original);
       regex = new RegExp(escapedOriginal, rule.caseSensitive ? 'g' : 'gi');
       sortPriority = 2;
       break;
+    }
 
     case 'regex':
       // Use provided regex pattern directly
@@ -141,7 +142,7 @@ export function validateRegex(pattern: string): boolean {
   try {
     new RegExp(pattern);
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }

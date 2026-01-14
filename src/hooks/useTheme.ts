@@ -94,11 +94,6 @@ export const useTheme = () => {
     [applyTheme]
   );
 
-  // Apply theme whenever theme state changes
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme, applyTheme]);
-
   // Listen for storage changes from other extension pages or dev tabs
   useEffect(() => {
     const fromChrome = isChromeStorageAvailable();
@@ -111,6 +106,7 @@ export const useTheme = () => {
         if (areaName === 'sync' && changes[THEME_KEY]) {
           const newTheme = changes[THEME_KEY].newValue as ThemeMode;
           setTheme(newTheme);
+          applyTheme(newTheme);
         }
       };
 
@@ -121,12 +117,13 @@ export const useTheme = () => {
         if (e.key === THEME_KEY && e.newValue) {
           const newTheme = e.newValue as ThemeMode;
           setTheme(newTheme);
+          applyTheme(newTheme);
         }
       };
       window.addEventListener('storage', handleLocal);
       return () => window.removeEventListener('storage', handleLocal);
     }
-  }, []);
+  }, [applyTheme]);
 
   // Listen for system theme changes
   useEffect(() => {
