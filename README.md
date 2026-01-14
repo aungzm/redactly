@@ -28,6 +28,14 @@ Redactly works seamlessly with the following AI platforms:
 - **Enable/Disable Rules**: Toggle individual rules on or off without deleting them, giving you flexibility to test different configurations
 - **Rule Prioritization**: Reorder rules to control the sequence in which they're applied to your text
 - **Import/Export**: Backup your rules or share configurations by exporting to JSON and importing from files
+- **Bulk Rule Management**: Select multiple rules to enable, disable, change type, or delete in a single action
+
+### Backup and Restore
+
+- **Complete Backups**: Export all your rules, site settings, and application preferences to a single JSON file
+- **Selective Restore**: Choose exactly what to restore from a backup - rules, site settings, or app preferences
+- **Backup Preview**: View backup details (creation date, version, counts) before restoring
+- **Data Safety**: Clear warnings before overwriting existing data to prevent accidental loss
 
 ### Site-Level Control
 
