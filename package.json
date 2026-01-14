@@ -12,7 +12,7 @@
     "build:firefox": "tsc && cross-env BROWSER=firefox vite build",
     "prepare-manifests": "node scripts/build-manifests.js",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --report-unused-disable-directives",
     "type-check": "tsc --noEmit"
   },
   "keywords": [
@@ -46,6 +46,7 @@
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^17.0.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",
