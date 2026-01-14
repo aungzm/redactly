@@ -1,6 +1,11 @@
 # Redactly
 
 A privacy-focused browser extension that automatically redacts sensitive information before submitting to AI services and restores it when copying responses.
+## Screenshots
+<img width="1153" height="1111" alt="Redactly_rules" src="https://github.com/user-attachments/assets/8c4765eb-331d-4773-a5d0-bd7ed37c3bb0" />
+<img width="1151" height="701" alt="Redactly_sites" src="https://github.com/user-attachments/assets/69fe3e01-3093-48e8-88cc-ea6805b49af2" />
+<img width="1162" height="545" alt="Redactly_test" src="https://github.com/user-attachments/assets/9312fa28-ad54-47c6-8d60-db0d2b02f0c2" />
+<img width="1167" height="647" alt="Redactly_backup" src="https://github.com/user-attachments/assets/f92da544-475e-4722-b7e2-cbaa5c136c00" />
 
 ## Features
 
