@@ -1,6 +1,6 @@
 # Redactly
 
-A privacy-focused browser extension that automatically redacts sensitive information before submitting to AI services and restores it when copying responses.
+A privacy-focused browser extension that automatically redacts sensitive information before submitting to AI services.
 ## Screenshots
 
 ### Rules Management
