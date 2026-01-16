@@ -4,7 +4,6 @@ export type {
   SupportedSite,
   SiteSettings,
   SiteSettingsMap,
-  EncryptionSettings,
   UISettings,
   ExtensionSettings,
   StorageData,

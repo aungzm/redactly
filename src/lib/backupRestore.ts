@@ -44,7 +44,6 @@ export const createBackup = async (): Promise<string> => {
       siteSettings: result.siteSettings || {},
       settings: result.settings || {
         version: '0.1.0',
-        encryption: { enabled: false, algorithm: 'AES-GCM' },
         ui: { highlightRedacted: false },
       },
     },

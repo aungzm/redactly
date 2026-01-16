@@ -11,18 +11,12 @@ export interface SiteSettingsMap {
   [site: string]: SiteSettings;
 }
 
-export interface EncryptionSettings {
-  enabled: boolean;
-  algorithm: 'AES-GCM';          // Future: support multiple algorithms
-}
-
 export interface UISettings {
   highlightRedacted: boolean;
 }
 
 export interface ExtensionSettings {
   version: string;               // Semantic version
-  encryption: EncryptionSettings;
   ui: UISettings;
 }
 

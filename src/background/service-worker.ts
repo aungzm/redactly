@@ -20,7 +20,6 @@ async function initializeStorage(): Promise<void> {
   if (!result.settings) {
     const defaultSettings = {
       version: '0.1.0',
-      encryption: { enabled: false, algorithm: 'AES-GCM' as const },
       ui: { highlightRedacted: false },
     };
     await chrome.storage.local.set({ settings: defaultSettings });
