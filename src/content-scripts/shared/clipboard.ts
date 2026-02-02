@@ -76,9 +76,10 @@ export function setupClipboard(rules: Rule[], containerSelector?: string): void 
  * @returns Un-redacted HTML
  */
 function unredactHTML(html: string, rules: Rule[]): string {
-  // Create a temporary element to parse HTML
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
+  // Use DOMParser for safe HTML parsing 
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const temp = doc.body;
 
   // Process text nodes recursively
   function processNode(node: Node): void {
