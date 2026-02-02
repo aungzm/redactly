@@ -31,6 +31,9 @@ let rules: Rule[] = [];
 let isEnabled = false;
 let editModeMonitor: EditModeMonitor | null = null;
 
+// WeakSet for atomic tracking of initialized elements (prevents race conditions)
+const initializedElements = new WeakSet<HTMLElement>();
+
 /**
  * Initialize the content script
  */
@@ -444,9 +447,10 @@ function observeForNewInputs(): void {
     for (const mutation of mutations) {
       if (mutation.addedNodes.length > 0) {
         const input = document.querySelector(SELECTORS.input) as HTMLElement;
-        if (input && !input.dataset.redactlyInitialized) {
+        if (input && !initializedElements.has(input)) {
+          // Add to WeakSet immediately to prevent race conditions
+          initializedElements.add(input);
           log('New input element detected, setting up interception');
-          input.dataset.redactlyInitialized = 'true';
 
           if (input.hasAttribute('contenteditable')) {
             setupProseMirrorInterception(input as HTMLDivElement);
