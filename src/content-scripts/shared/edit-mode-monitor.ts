@@ -9,12 +9,23 @@ export interface EditModeConfig {
   cancelButtonSelector?: string;
 }
 
+// Cleanup resources for each edit field
+interface EditFieldCleanup {
+  removalObserver: MutationObserver;
+  timeoutId: ReturnType<typeof setTimeout>;
+  buttonCleanups: Array<() => void>;
+}
+
 export class EditModeMonitor {
   private observer!: MutationObserver;
   private activeHandlers: Map<HTMLElement, EditableFieldHandler> = new Map();
+  private activeCleanups: Map<HTMLElement, EditFieldCleanup> = new Map();
   private config: EditModeConfig;
   private rules: Rule[];
   private isEnabled: boolean;
+
+  // Maximum time to wait for edit completion before cleaning up (5 minutes)
+  private static readonly EDIT_TIMEOUT_MS = 5 * 60 * 1000;
 
   constructor(config: EditModeConfig, rules: Rule[], isEnabled: boolean) {
     this.config = config;
@@ -121,7 +132,20 @@ export class EditModeMonitor {
     const messageContainer = editField.closest(this.config.messageSelector);
     if (!messageContainer) return;
 
-    const cleanup = () => this.handleEditComplete(editField);
+    const buttonCleanups: Array<() => void> = [];
+
+    // Cleanup function that properly releases all resources
+    const cleanup = () => {
+      // Clean up tracked resources for this edit field
+      const cleanupResources = this.activeCleanups.get(editField);
+      if (cleanupResources) {
+        cleanupResources.removalObserver.disconnect();
+        clearTimeout(cleanupResources.timeoutId);
+        cleanupResources.buttonCleanups.forEach((fn) => fn());
+        this.activeCleanups.delete(editField);
+      }
+      this.handleEditComplete(editField);
+    };
 
     // Watch for save/cancel buttons
     if (this.config.saveButtonSelector) {
@@ -129,7 +153,9 @@ export class EditModeMonitor {
         this.config.saveButtonSelector
       );
       if (saveButton) {
-        saveButton.addEventListener('click', cleanup, { once: true });
+        const handler = () => cleanup();
+        saveButton.addEventListener('click', handler, { once: true });
+        buttonCleanups.push(() => saveButton.removeEventListener('click', handler));
       }
     }
 
@@ -138,17 +164,18 @@ export class EditModeMonitor {
         this.config.cancelButtonSelector
       );
       if (cancelButton) {
-        cancelButton.addEventListener('click', cleanup, { once: true });
+        const handler = () => cleanup();
+        cancelButton.addEventListener('click', handler, { once: true });
+        buttonCleanups.push(() => cancelButton.removeEventListener('click', handler));
       }
     }
 
-    // Also watch for the edit field being removed from DOM
+    // Watch for the edit field being removed from DOM
     const removalObserver = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         mutation.removedNodes.forEach((node) => {
           if (node === editField || (node as Element).contains?.(editField)) {
             cleanup();
-            removalObserver.disconnect();
           }
         });
       }
@@ -157,6 +184,19 @@ export class EditModeMonitor {
     removalObserver.observe(document.body, {
       childList: true,
       subtree: true,
+    });
+
+    // Timeout fallback to prevent memory leaks if edit mode is never completed
+    const timeoutId = setTimeout(() => {
+      log('Edit mode timeout reached, cleaning up');
+      cleanup();
+    }, EditModeMonitor.EDIT_TIMEOUT_MS);
+
+    // Track all cleanup resources for this edit field
+    this.activeCleanups.set(editField, {
+      removalObserver,
+      timeoutId,
+      buttonCleanups,
     });
   }
 
@@ -176,7 +216,17 @@ export class EditModeMonitor {
 
   public destroy(): void {
     this.observer.disconnect();
+
+    // Clean up all active handlers
     this.activeHandlers.forEach((handler) => handler.destroy());
     this.activeHandlers.clear();
+
+    // Clean up all tracked cleanup resources
+    this.activeCleanups.forEach((cleanupResources) => {
+      cleanupResources.removalObserver.disconnect();
+      clearTimeout(cleanupResources.timeoutId);
+      cleanupResources.buttonCleanups.forEach((fn) => fn());
+    });
+    this.activeCleanups.clear();
   }
 }
