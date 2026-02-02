@@ -66,9 +66,26 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
  */
 export async function getRulesFromStorage(): Promise<Rule[]> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'GET_RULES' }, (response) => {
-      resolve(response || []);
-    });
+    const timeout = setTimeout(() => {
+      logError('getRulesFromStorage: Message timeout');
+      resolve([]);
+    }, 5000);
+
+    try {
+      chrome.runtime.sendMessage({ type: 'GET_RULES' }, (response) => {
+        clearTimeout(timeout);
+        if (chrome.runtime.lastError) {
+          logError('getRulesFromStorage: Runtime error', chrome.runtime.lastError.message);
+          resolve([]);
+          return;
+        }
+        resolve(response || []);
+      });
+    } catch (error) {
+      clearTimeout(timeout);
+      logError('getRulesFromStorage: Exception', error);
+      resolve([]);
+    }
   });
 }
 
@@ -119,13 +136,30 @@ export function logError(message: string, error?: unknown): void {
  */
 export async function isSiteEnabled(site: string): Promise<boolean> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'GET_SITE_SETTINGS' }, (response) => {
-      if (response && response[site]) {
-        resolve(response[site].enabled);
-      } else {
-        resolve(false);
-      }
-    });
+    const timeout = setTimeout(() => {
+      logError('isSiteEnabled: Message timeout');
+      resolve(false);
+    }, 5000);
+
+    try {
+      chrome.runtime.sendMessage({ type: 'GET_SITE_SETTINGS' }, (response) => {
+        clearTimeout(timeout);
+        if (chrome.runtime.lastError) {
+          logError('isSiteEnabled: Runtime error', chrome.runtime.lastError.message);
+          resolve(false);
+          return;
+        }
+        if (response && response[site]) {
+          resolve(response[site].enabled);
+        } else {
+          resolve(false);
+        }
+      });
+    } catch (error) {
+      clearTimeout(timeout);
+      logError('isSiteEnabled: Exception', error);
+      resolve(false);
+    }
   });
 }
 
@@ -134,8 +168,20 @@ export async function isSiteEnabled(site: string): Promise<boolean> {
  * @param site - Site hostname
  */
 export function updateSiteLastUsed(site: string): void {
-  chrome.runtime.sendMessage({
-    type: 'UPDATE_SITE_LAST_USED',
-    payload: { site },
-  });
+  try {
+    chrome.runtime.sendMessage(
+      {
+        type: 'UPDATE_SITE_LAST_USED',
+        payload: { site },
+      },
+      () => {
+        // Check for errors but don't block - this is fire-and-forget
+        if (chrome.runtime.lastError) {
+          logError('updateSiteLastUsed: Runtime error', chrome.runtime.lastError.message);
+        }
+      }
+    );
+  } catch (error) {
+    logError('updateSiteLastUsed: Exception', error);
+  }
 }
