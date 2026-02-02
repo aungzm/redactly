@@ -1,28 +1,34 @@
 import type { Rule, SiteSettings, SiteSettingsMap, SupportedSite } from '../types';
 
 async function initializeStorage(): Promise<void> {
-  const result = await chrome.storage.local.get(['rules', 'siteSettings', 'settings']);
+  try {
+    const result = await chrome.storage.local.get(['rules', 'siteSettings', 'settings']);
 
-  if (!result.rules) {
-    await chrome.storage.local.set({ rules: [] as Rule[] });
-  }
+    if (!result.rules) {
+      await chrome.storage.local.set({ rules: [] as Rule[] });
+    }
 
-  if (!result.siteSettings) {
-    const defaultSiteSettings: SiteSettingsMap = {
-      'chatgpt.com': { enabled: true, lastUsed: null },
-      'claude.ai': { enabled: true, lastUsed: null },
-      'chat.deepseek.com': { enabled: true, lastUsed: null },
-      'gemini.google.com': { enabled: true, lastUsed: null },
-    };
-    await chrome.storage.local.set({ siteSettings: defaultSiteSettings });
-  }
+    if (!result.siteSettings) {
+      const defaultSiteSettings: SiteSettingsMap = {
+        'chatgpt.com': { enabled: true, lastUsed: null },
+        'claude.ai': { enabled: true, lastUsed: null },
+        'chat.deepseek.com': { enabled: true, lastUsed: null },
+        'gemini.google.com': { enabled: true, lastUsed: null },
+      };
+      await chrome.storage.local.set({ siteSettings: defaultSiteSettings });
+    }
 
-  if (!result.settings) {
-    const defaultSettings = {
-      version: '0.1.0',
-      ui: { highlightRedacted: false },
-    };
-    await chrome.storage.local.set({ settings: defaultSettings });
+    if (!result.settings) {
+      const defaultSettings = {
+        version: '0.1.0',
+        ui: { highlightRedacted: false },
+      };
+      await chrome.storage.local.set({ settings: defaultSettings });
+    }
+
+    console.log('[Redactly] Storage initialized successfully');
+  } catch (error) {
+    console.error('[Redactly] Failed to initialize storage:', error);
   }
 }
 export async function getRules(): Promise<Rule[]> {
@@ -63,31 +69,63 @@ export async function updateSiteSettings(site: SupportedSite, settings: SiteSett
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (!message || typeof message.type !== 'string') {
+    console.error('[Redactly] Invalid message format:', message);
+    return false;
+  }
+
   if (message.type === 'GET_RULES') {
-    getRules().then(sendResponse);
+    getRules()
+      .then(sendResponse)
+      .catch((error) => {
+        console.error('[Redactly] Error getting rules:', error);
+        sendResponse([]);
+      });
     return true; // Indicates async response
   }
 
   if (message.type === 'GET_SITE_SETTINGS') {
-    getSiteSettings().then(sendResponse);
+    getSiteSettings()
+      .then(sendResponse)
+      .catch((error) => {
+        console.error('[Redactly] Error getting site settings:', error);
+        sendResponse({});
+      });
     return true;
   }
 
   if (message.type === 'UPDATE_SITE_LAST_USED') {
-    const { site } = message.payload;
-    getSiteSettings().then((settings) => {
-      if (settings[site]) {
-        settings[site].lastUsed = new Date().toISOString();
-        chrome.storage.local.set({ siteSettings: settings });
-      }
-    });
+    // Validate payload
+    const site = message.payload?.site;
+    if (!site || typeof site !== 'string') {
+      console.error('[Redactly] Invalid payload for UPDATE_SITE_LAST_USED:', message.payload);
+      return false;
+    }
+
+    getSiteSettings()
+      .then((settings) => {
+        if (settings[site]) {
+          settings[site].lastUsed = new Date().toISOString();
+          return chrome.storage.local.set({ siteSettings: settings });
+        }
+      })
+      .catch((error) => {
+        console.error('[Redactly] Error updating site last used:', error);
+      });
     return false;
   }
+
+  return false;
 });
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Redactly extension installed');
-  initializeStorage();
+  console.log('[Redactly] Extension installed');
+  initializeStorage().catch((error) => {
+    console.error('[Redactly] Failed to initialize on install:', error);
+  });
 });
 
-initializeStorage();
+// Initialize storage on service worker startup
+initializeStorage().catch((error) => {
+  console.error('[Redactly] Failed to initialize on startup:', error);
+});
