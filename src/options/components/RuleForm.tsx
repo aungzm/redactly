@@ -3,6 +3,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { Select } from '../../components/Select';
 import type { Rule, RuleType } from '../../types';
+import { validateRegex } from '../../content-scripts/shared/redactor';
 
 interface RuleFormProps {
   onSubmit: (ruleData: Omit<Rule, 'id' | 'createdAt' | 'updatedAt' | 'priority'>) => void;
@@ -23,6 +24,8 @@ export const RuleForm: React.FC<RuleFormProps> = ({ onSubmit }) => {
 
     if (!original.trim()) {
       newErrors.original = 'Original text is required';
+    } else if (type === 'regex' && !validateRegex(original.trim())) {
+      newErrors.original = 'Invalid regex pattern';
     }
 
     if (!placeholder.trim()) {

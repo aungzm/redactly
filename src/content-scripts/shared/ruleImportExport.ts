@@ -1,4 +1,5 @@
 import type { Rule } from '../../types';
+import { validateRegex } from './redactor';
 
 export interface ExportData {
   version: string;
@@ -67,6 +68,14 @@ export const importRules = (
         return {
           success: false,
           message: 'Invalid rule in import file. Each rule must have "original" and "placeholder" fields.',
+        };
+      }
+
+      // Validate regex syntax for regex-type rules
+      if (importedRule.type === 'regex' && !validateRegex(importedRule.original)) {
+        return {
+          success: false,
+          message: `Invalid regex pattern in imported rule: "${importedRule.original}"`,
         };
       }
 
