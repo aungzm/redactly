@@ -5,6 +5,43 @@ interface CompiledRule extends Rule {
   sortPriority: number;          // For sorting (exact=2, regex=1, then by rule.priority)
 }
 
+// Cache compiled rules to avoid recompilation on every redact/unredact call.
+// Rules only change on storage updates, so caching by reference is effective.
+let cachedRulesRef: Rule[] | null = null;
+let cachedRedactOrder: CompiledRule[] = [];
+let cachedUnredactOrder: CompiledRule[] = [];
+
+function getCompiledRules(rules: Rule[]): { redactOrder: CompiledRule[]; unredactOrder: CompiledRule[] } {
+  if (rules === cachedRulesRef) {
+    return { redactOrder: cachedRedactOrder, unredactOrder: cachedUnredactOrder };
+  }
+
+  const enabledRules = rules.filter((rule) => rule.enabled);
+  const compiled = enabledRules.map(compileRule);
+
+  // Redact order: exact (2) before regex (1), then by priority ascending
+  const redactOrder = [...compiled].sort((a, b) => {
+    if (a.sortPriority !== b.sortPriority) {
+      return b.sortPriority - a.sortPriority;
+    }
+    return a.priority - b.priority;
+  });
+
+  // Unredact order: regex (1) before exact (2), then by priority descending
+  const unredactOrder = [...compiled].sort((a, b) => {
+    if (a.sortPriority !== b.sortPriority) {
+      return a.sortPriority - b.sortPriority;
+    }
+    return b.priority - a.priority;
+  });
+
+  cachedRulesRef = rules;
+  cachedRedactOrder = redactOrder;
+  cachedUnredactOrder = unredactOrder;
+
+  return { redactOrder, unredactOrder };
+}
+
 /**
  * Compile a rule into an optimized format with priority
  */
@@ -62,25 +99,17 @@ export function redact(text: string, rules: Rule[]): RedactionResult {
     return { text, appliedRules: [] };
   }
 
-  // Filter enabled rules and compile them
-  const enabledRules = rules.filter((rule) => rule.enabled);
-  const compiledRules = enabledRules.map(compileRule);
-
-  // Sort by type priority first (exact=2, regex=1), then by rule priority (lower number = higher priority)
-  compiledRules.sort((a, b) => {
-    if (a.sortPriority !== b.sortPriority) {
-      return b.sortPriority - a.sortPriority; // Exact (2) before regex (1)
-    }
-    return a.priority - b.priority; // Within same type, lower priority number = higher priority
-  });
+  const { redactOrder } = getCompiledRules(rules);
 
   let redactedText = text;
   const appliedRules: string[] = [];
 
   // Apply each rule
-  for (const rule of compiledRules) {
+  for (const rule of redactOrder) {
     if (rule.regex) {
       const before = redactedText;
+      // Reset lastIndex for stateful regexes with 'g' flag
+      rule.regex.lastIndex = 0;
       redactedText = redactedText.replace(rule.regex, rule.placeholder);
 
       // Track if rule was applied
@@ -107,22 +136,11 @@ export function unredact(text: string, rules: Rule[]): string {
     return text;
   }
 
-  // Filter enabled rules
-  const enabledRules = rules.filter((rule) => rule.enabled);
+  const { unredactOrder } = getCompiledRules(rules);
 
   let unredactedText = text;
 
-  // Apply reverse replacements (placeholder -> original)
-  // Process in reverse priority order to handle overlapping rules correctly
-  const compiledRules = enabledRules.map(compileRule);
-  compiledRules.sort((a, b) => {
-    if (a.sortPriority !== b.sortPriority) {
-      return a.sortPriority - b.sortPriority; // Regex (1) before exact (2) for unredaction
-    }
-    return b.priority - a.priority; // Within same type, higher priority number = higher priority for unredaction
-  });
-
-  for (const rule of compiledRules) {
+  for (const rule of unredactOrder) {
     // Create a regex to find the placeholder
     const escapedPlaceholder = escapeRegExp(rule.placeholder);
     const placeholderRegex = new RegExp(escapedPlaceholder, 'g');
