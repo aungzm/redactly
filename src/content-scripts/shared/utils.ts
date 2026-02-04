@@ -41,23 +41,33 @@ export function waitForElement(selector: string, timeout: number = 10000): Promi
  * Debounce function calls
  * @param func - Function to debounce
  * @param wait - Wait time in milliseconds
- * @returns Debounced function
+ * @returns Debounced function with a cancel method
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
-): (...args: Parameters<T>) => void {
+): ((...args: Parameters<T>) => void) & { cancel: () => void } {
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
-  return function (...args: Parameters<T>) {
+  const debounced = function (...args: Parameters<T>) {
     if (timeout) {
       clearTimeout(timeout);
     }
 
     timeout = setTimeout(() => {
+      timeout = null;
       func(...args);
     }, wait);
   };
+
+  debounced.cancel = function () {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+  };
+
+  return debounced;
 }
 
 /**
