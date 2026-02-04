@@ -40,9 +40,9 @@ export const createBackup = async (): Promise<string> => {
     backupVersion: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     data: {
-      rules: result.rules || [],
-      siteSettings: result.siteSettings || {},
-      settings: result.settings || {
+      rules: result.rules ?? [],
+      siteSettings: result.siteSettings ?? {},
+      settings: result.settings ?? {
         version: '0.1.0',
         ui: { highlightRedacted: false },
       },
@@ -119,7 +119,7 @@ export const restoreBackup = async (
   if (!validation.valid || !validation.data) {
     return {
       success: false,
-      message: validation.error || 'Invalid backup file',
+      message: validation.error ?? 'Invalid backup file',
     };
   }
 
@@ -135,13 +135,13 @@ export const restoreBackup = async (
     // Ensure all rules have required fields and regenerate IDs/timestamps
     const restoredRules = data.rules.map((rule, index) => ({
       ...rule,
-      id: rule.id || crypto.randomUUID(),
+      id: rule.id ?? crypto.randomUUID(),
       priority: rule.priority ?? index,
-      createdAt: rule.createdAt || new Date().toISOString(),
+      createdAt: rule.createdAt ?? new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       enabled: rule.enabled ?? true,
       caseSensitive: rule.caseSensitive ?? false,
-      type: rule.type || 'exact',
+      type: rule.type ?? 'exact',
     }));
     updates.rules = restoredRules;
     details.rulesCount = restoredRules.length;
@@ -214,8 +214,8 @@ export const getBackupInfo = (jsonContent: string): {
       exportedAt: validation.data.exportedAt,
       appVersion: validation.data.version,
       backupVersion: validation.data.backupVersion,
-      rulesCount: data.rules?.length || 0,
-      sitesCount: Object.keys(data.siteSettings || {}).length,
+      rulesCount: data.rules?.length ?? 0,
+      sitesCount: Object.keys(data.siteSettings ?? {}).length,
       hasSettings: !!data.settings,
     },
   };
