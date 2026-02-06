@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useStorage } from './useStorage';
 import type { Rule } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 import { importRules as validateImport, getRulesToImport, getRulesToImportWithConflictResolution } from '../content-scripts/shared/ruleImportExport';
 import type { ImportResult, ConflictResolutionMap } from '../content-scripts/shared/ruleImportExport';
 
@@ -17,7 +16,7 @@ export const useRules = () => {
       const newRule: Rule = {
         ...ruleData,
         priority,
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -154,7 +153,7 @@ export const useRules = () => {
         return {
           ...rule,
           priority: sameTypeRules.length + index,
-          id: uuidv4(),
+          id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -184,7 +183,7 @@ export const useRules = () => {
         return {
           ...rule,
           priority: sameTypeRules.length + index,
-          id: uuidv4(),
+          id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
