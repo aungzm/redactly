@@ -1,4 +1,5 @@
 import type { Rule, SiteSettings, SiteSettingsMap, SupportedSite } from '../types';
+import { validateRules } from '../lib/validateRules';
 
 async function initializeStorage(): Promise<void> {
   try {
@@ -33,7 +34,7 @@ async function initializeStorage(): Promise<void> {
 }
 export async function getRules(): Promise<Rule[]> {
   const result = await chrome.storage.local.get(['rules']);
-  return result.rules || [];
+  return validateRules(result.rules);
 }
 
 export async function saveRule(rule: Rule): Promise<void> {
