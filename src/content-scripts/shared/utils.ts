@@ -145,13 +145,20 @@ export async function getRulesFromStorage(): Promise<Rule[]> {
 /**
  * Listen for storage changes and execute callback
  * @param callback - Function to call when rules change
+ * @returns Cleanup function to remove the listener
  */
-export function onRulesChanged(callback: (rules: Rule[]) => void): void {
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+export function onRulesChanged(callback: (rules: Rule[]) => void): () => void {
+  const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
     if (areaName === 'local' && changes.rules) {
       callback(changes.rules.newValue || []);
     }
-  });
+  };
+
+  chrome.storage.onChanged.addListener(listener);
+
+  return () => {
+    chrome.storage.onChanged.removeListener(listener);
+  };
 }
 
 /**

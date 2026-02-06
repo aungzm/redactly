@@ -35,13 +35,46 @@ let editModeMonitor: EditModeMonitor | null = null;
 // Listener manager for automatic cleanup of event listeners
 const listenerManager = new ListenerManager();
 
+// Track initialization state and cleanup functions
+let isInitialized = false;
+let inputObserver: MutationObserver | null = null;
+let rulesChangedCleanup: (() => void) | null = null;
+
 // WeakSet for atomic tracking of initialized elements (prevents race conditions)
 const initializedElements = new WeakSet<HTMLElement>();
+
+/**
+ * Clean up all resources before re-initialization
+ */
+function cleanup(): void {
+  listenerManager.cleanup();
+
+  if (editModeMonitor) {
+    editModeMonitor.destroy();
+    editModeMonitor = null;
+  }
+
+  if (inputObserver) {
+    inputObserver.disconnect();
+    inputObserver = null;
+  }
+
+  if (rulesChangedCleanup) {
+    rulesChangedCleanup();
+    rulesChangedCleanup = null;
+  }
+}
 
 /**
  * Initialize the content script
  */
 async function init(): Promise<void> {
+  // Prevent multiple initializations
+  if (isInitialized) {
+    log('Already initialized, cleaning up before re-init');
+    cleanup();
+  }
+
   try {
     log('Initializing ChatGPT content script');
 
@@ -63,13 +96,14 @@ async function init(): Promise<void> {
     editModeMonitor = new EditModeMonitor(EDIT_MODE_CONFIG, rules, isEnabled);
     log('Edit mode monitoring initialized');
 
-    onRulesChanged((newRules) => {
+    rulesChangedCleanup = onRulesChanged((newRules) => {
       log('Rules updated', newRules);
       rules = newRules;
       updateClipboardRules(newRules);
       editModeMonitor?.updateRules(newRules);
     });
 
+    isInitialized = true;
     log('Initialization complete');
   } catch (error) {
     logError('Failed to initialize', error);
@@ -429,7 +463,12 @@ function setupTextareaInterception(textarea: HTMLTextAreaElement): void {
  * Observe for new input elements (for SPA navigation)
  */
 function observeForNewInputs(): void {
-  const observer = new MutationObserver((mutations) => {
+  // Clean up existing observer if any
+  if (inputObserver) {
+    inputObserver.disconnect();
+  }
+
+  inputObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.addedNodes.length > 0) {
         const input = document.querySelector(SELECTORS.input) as HTMLElement;
@@ -448,7 +487,7 @@ function observeForNewInputs(): void {
     }
   });
 
-  observer.observe(document.body, {
+  inputObserver.observe(document.body, {
     childList: true,
     subtree: true,
   });
