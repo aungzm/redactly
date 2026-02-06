@@ -114,32 +114,80 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 }
 
 /**
+ * Configuration for message retry behavior
+ */
+interface RetryConfig {
+  maxRetries: number;
+  baseDelayMs: number;
+  timeoutMs: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  baseDelayMs: 500,
+  timeoutMs: 5000,
+};
+
+/**
+ * Send a message to the service worker with retry logic and timeout
+ * @param message - Message to send
+ * @param config - Retry configuration
+ * @returns Promise with the response
+ */
+async function sendMessageWithRetry<T>(
+  message: unknown,
+  config: RetryConfig = DEFAULT_RETRY_CONFIG
+): Promise<T | null> {
+  let lastError: string | undefined;
+
+  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+    try {
+      const result = await new Promise<T | null>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Message timeout'));
+        }, config.timeoutMs);
+
+        try {
+          chrome.runtime.sendMessage(message, (response) => {
+            clearTimeout(timeout);
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+              return;
+            }
+            resolve(response ?? null);
+          });
+        } catch (error) {
+          clearTimeout(timeout);
+          reject(error);
+        }
+      });
+
+      // Success - return the result
+      return result;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+
+      if (attempt < config.maxRetries) {
+        // Exponential backoff: 500ms, 1000ms, 2000ms
+        const delay = config.baseDelayMs * Math.pow(2, attempt);
+        log(`Message failed (attempt ${attempt + 1}/${config.maxRetries + 1}), retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  // All retries exhausted
+  logError(`Message failed after ${config.maxRetries + 1} attempts`, lastError);
+  return null;
+}
+
+/**
  * Get rules from storage
  * @returns Promise with array of rules
  */
 export async function getRulesFromStorage(): Promise<Rule[]> {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      logError('getRulesFromStorage: Message timeout');
-      resolve([]);
-    }, 5000);
-
-    try {
-      chrome.runtime.sendMessage({ type: 'GET_RULES' }, (response) => {
-        clearTimeout(timeout);
-        if (chrome.runtime.lastError) {
-          logError('getRulesFromStorage: Runtime error', chrome.runtime.lastError.message);
-          resolve([]);
-          return;
-        }
-        resolve(response || []);
-      });
-    } catch (error) {
-      clearTimeout(timeout);
-      logError('getRulesFromStorage: Exception', error);
-      resolve([]);
-    }
-  });
+  const response = await sendMessageWithRetry<Rule[]>({ type: 'GET_RULES' });
+  return response ?? [];
 }
 
 /**
@@ -195,32 +243,14 @@ export function logError(message: string, error?: unknown): void {
  * @returns Promise that resolves to true if enabled
  */
 export async function isSiteEnabled(site: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      logError('isSiteEnabled: Message timeout');
-      resolve(false);
-    }, 5000);
+  const response = await sendMessageWithRetry<Record<string, { enabled: boolean }>>(
+    { type: 'GET_SITE_SETTINGS' }
+  );
 
-    try {
-      chrome.runtime.sendMessage({ type: 'GET_SITE_SETTINGS' }, (response) => {
-        clearTimeout(timeout);
-        if (chrome.runtime.lastError) {
-          logError('isSiteEnabled: Runtime error', chrome.runtime.lastError.message);
-          resolve(false);
-          return;
-        }
-        if (response && response[site]) {
-          resolve(response[site].enabled);
-        } else {
-          resolve(false);
-        }
-      });
-    } catch (error) {
-      clearTimeout(timeout);
-      logError('isSiteEnabled: Exception', error);
-      resolve(false);
-    }
-  });
+  if (response && response[site]) {
+    return response[site].enabled;
+  }
+  return false;
 }
 
 /**
@@ -228,20 +258,11 @@ export async function isSiteEnabled(site: string): Promise<boolean> {
  * @param site - Site hostname
  */
 export function updateSiteLastUsed(site: string): void {
-  try {
-    chrome.runtime.sendMessage(
-      {
-        type: 'UPDATE_SITE_LAST_USED',
-        payload: { site },
-      },
-      () => {
-        // Check for errors but don't block - this is fire-and-forget
-        if (chrome.runtime.lastError) {
-          logError('updateSiteLastUsed: Runtime error', chrome.runtime.lastError.message);
-        }
-      }
-    );
-  } catch (error) {
-    logError('updateSiteLastUsed: Exception', error);
-  }
+  // Fire-and-forget with retry - don't await
+  sendMessageWithRetry(
+    { type: 'UPDATE_SITE_LAST_USED', payload: { site } },
+    { maxRetries: 2, baseDelayMs: 300, timeoutMs: 3000 }
+  ).catch(() => {
+    // Silently ignore - this is non-critical
+  });
 }
