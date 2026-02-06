@@ -1,6 +1,49 @@
 import type { Rule } from '../../types';
 
 /**
+ * Manages event listeners with automatic cleanup using AbortController.
+ * Prevents memory leaks from accumulated listeners during SPA navigation.
+ */
+export class ListenerManager {
+  private controller: AbortController;
+
+  constructor() {
+    this.controller = new AbortController();
+  }
+
+  /**
+   * Get the AbortSignal to pass to addEventListener options
+   */
+  get signal(): AbortSignal {
+    return this.controller.signal;
+  }
+
+  /**
+   * Abort all listeners managed by this instance and create a new controller
+   */
+  cleanup(): void {
+    this.controller.abort();
+    this.controller = new AbortController();
+  }
+
+  /**
+   * Add an event listener that will be automatically cleaned up
+   */
+  addEventListener<K extends keyof HTMLElementEventMap>(
+    target: HTMLElement | Document,
+    type: K,
+    listener: (this: HTMLElement, ev: HTMLElementEventMap[K]) => void,
+    options?: boolean | Omit<AddEventListenerOptions, 'signal'>
+  ): void {
+    const opts = typeof options === 'boolean'
+      ? { capture: options, signal: this.signal }
+      : { ...options, signal: this.signal };
+
+    target.addEventListener(type, listener as EventListener, opts);
+  }
+}
+
+/**
  * Wait for an element to appear in the DOM
  * @param selector - CSS selector for the element
  * @param timeout - Maximum time to wait in milliseconds (default: 10000)

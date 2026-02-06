@@ -9,6 +9,7 @@ import {
   logError,
   isSiteEnabled,
   updateSiteLastUsed,
+  ListenerManager,
 } from './shared/utils';
 import { EditModeMonitor, type EditModeConfig } from './shared/edit-mode-monitor';
 
@@ -30,6 +31,9 @@ const EDIT_MODE_CONFIG: EditModeConfig = {
 let rules: Rule[] = [];
 let isEnabled = false;
 let editModeMonitor: EditModeMonitor | null = null;
+
+// Listener manager for automatic cleanup of event listeners
+const listenerManager = new ListenerManager();
 
 // WeakSet for atomic tracking of initialized elements (prevents race conditions)
 const initializedElements = new WeakSet<HTMLElement>();
@@ -107,6 +111,9 @@ async function setupInputRedaction(): Promise<void> {
 function setupProseMirrorInterception(element: HTMLDivElement): void {
   log('Setting up ProseMirror interception');
 
+  // Clean up any existing listeners before adding new ones
+  listenerManager.cleanup();
+
   let isRedacting = false;
   let skipNextInput = false;
   let skipNextRedaction = false;
@@ -127,314 +134,293 @@ function setupProseMirrorInterception(element: HTMLDivElement): void {
 
   let lastCapturedText = '';
 
-  element.addEventListener(
-    'beforeinput',
-    (e: Event) => {
-      const beforeInputEvent = e as InputEvent;
-      log(`beforeinput event fired - inputType: ${beforeInputEvent.inputType}`);
-      if (beforeInputEvent.inputType === 'insertLineBreak') {
-        lastCapturedText = getEditorText();
-        log(`beforeinput (Enter) - Captured text: "${lastCapturedText}"`);
-      }
-    },
-    true
-  );
+  listenerManager.addEventListener(element, 'beforeinput', (e: Event) => {
+    const beforeInputEvent = e as InputEvent;
+    log(`beforeinput event fired - inputType: ${beforeInputEvent.inputType}`);
+    if (beforeInputEvent.inputType === 'insertLineBreak') {
+      lastCapturedText = getEditorText();
+      log(`beforeinput (Enter) - Captured text: "${lastCapturedText}"`);
+    }
+  }, true);
 
-  element.addEventListener(
-    'input',
-    () => {
-      if (skipNextInput) {
-        skipNextInput = false;
+  listenerManager.addEventListener(element, 'input', () => {
+    if (skipNextInput) {
+      skipNextInput = false;
+      return;
+    }
+
+    if (skipNextRedaction) {
+      skipNextRedaction = false;
+      return;
+    }
+
+    const currentText = getEditorText();
+    lastCapturedText = currentText;
+
+    if (!isEnabled || rules.length === 0) {
+      return;
+    }
+
+    const result = redact(currentText, rules);
+
+    if (result.appliedRules.length > 0) {
+      log(`Real-time redaction: "${currentText}" → "${result.text}"`);
+
+      const selection = window.getSelection();
+      let cursorOffset = 0;
+
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(element);
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        cursorOffset = preCaretRange.toString().length;
+      }
+
+      const lengthDiff = result.text.length - currentText.length;
+
+      element.innerHTML = '<p></p>';
+      const paragraph = element.querySelector('p');
+      if (paragraph) {
+        paragraph.textContent = result.text;
+      }
+
+      const newSelection = window.getSelection();
+      if (newSelection && paragraph) {
+        const range = document.createRange();
+        const textNode = paragraph.firstChild;
+
+        if (textNode) {
+          let newOffset = cursorOffset + lengthDiff;
+
+          const maxOffset = textNode.textContent?.length || 0;
+          newOffset = Math.max(0, Math.min(newOffset, maxOffset));
+
+          range.setStart(textNode, newOffset);
+          range.collapse(true);
+          newSelection.removeAllRanges();
+          newSelection.addRange(range);
+        }
+      }
+
+      lastCapturedText = result.text;
+
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, true);
+
+  listenerManager.addEventListener(element, 'paste', (e: Event) => {
+    const clipboardEvent = e as ClipboardEvent;
+    if (!isEnabled || rules.length === 0) {
+      return;
+    }
+
+    const pastedText = clipboardEvent.clipboardData?.getData('text/plain') || '';
+
+    if (!pastedText) {
+      return;
+    }
+
+    const result = redact(pastedText, rules);
+
+    if (result.appliedRules.length > 0) {
+      log(`Paste detected - Redacting: "${pastedText}" → "${result.text}"`);
+
+      e.preventDefault();
+
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+
+        range.deleteContents();
+
+        const textNode = document.createTextNode(result.text);
+        range.insertNode(textNode);
+
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        skipNextInput = true;
+        skipNextRedaction = true;
+
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  }, true);
+
+  listenerManager.addEventListener(document, 'click', (e: Event) => {
+    const mouseEvent = e as MouseEvent;
+    if (isRedacting) return;
+
+    const target = mouseEvent.target as HTMLElement;
+    const submitButton = target.closest('button[data-testid="send-button"]');
+
+    if (submitButton) {
+      const textContent = getEditorText();
+
+      if (!textContent || !isEnabled) {
         return;
       }
 
-      if (skipNextRedaction) {
-        skipNextRedaction = false;
-        return;
-      }
-
-      const currentText = getEditorText();
-      lastCapturedText = currentText;
-
-      if (!isEnabled || rules.length === 0) {
-        return;
-      }
-
-      const result = redact(currentText, rules);
+      const result = redact(textContent, rules);
+      log(
+        `Button clicked - Text: "${textContent}", Redacted: "${result.text}", Rules applied: ${result.appliedRules.length}`
+      );
 
       if (result.appliedRules.length > 0) {
-        log(`Real-time redaction: "${currentText}" → "${result.text}"`);
+        log(`Button clicked - Preventing and redacting: "${textContent}" → "${result.text}"`);
 
-        const selection = window.getSelection();
-        let cursorOffset = 0;
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
 
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          const preCaretRange = range.cloneRange();
-          preCaretRange.selectNodeContents(element);
-          preCaretRange.setEnd(range.endContainer, range.endOffset);
-          cursorOffset = preCaretRange.toString().length;
-        }
-
-        const lengthDiff = result.text.length - currentText.length;
+        isRedacting = true;
 
         element.innerHTML = '<p></p>';
+        element.focus();
+
         const paragraph = element.querySelector('p');
         if (paragraph) {
           paragraph.textContent = result.text;
         }
 
-        const newSelection = window.getSelection();
-        if (newSelection && paragraph) {
-          const range = document.createRange();
-          const textNode = paragraph.firstChild;
-
-          if (textNode) {
-            let newOffset = cursorOffset + lengthDiff;
-
-            const maxOffset = textNode.textContent?.length || 0;
-            newOffset = Math.max(0, Math.min(newOffset, maxOffset));
-
-            range.setStart(textNode, newOffset);
-            range.collapse(true);
-            newSelection.removeAllRanges();
-            newSelection.addRange(range);
-          }
-        }
-
-        lastCapturedText = result.text;
-
         element.dispatchEvent(new Event('input', { bubbles: true }));
         element.dispatchEvent(new Event('change', { bubbles: true }));
+
+        setTimeout(() => {
+          log('Resubmitting with button click');
+          isRedacting = false;
+          (submitButton as HTMLButtonElement).click();
+        }, 100);
       }
-    },
-    true
-  );
-
-  element.addEventListener(
-    'paste',
-    (e: ClipboardEvent) => {
-      if (!isEnabled || rules.length === 0) {
-        return;
-      }
-
-      const pastedText = e.clipboardData?.getData('text/plain') || '';
-
-      if (!pastedText) {
-        return;
-      }
-
-      const result = redact(pastedText, rules);
-
-      if (result.appliedRules.length > 0) {
-        log(`Paste detected - Redacting: "${pastedText}" → "${result.text}"`);
-
-        e.preventDefault();
-
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-
-          range.deleteContents();
-
-          const textNode = document.createTextNode(result.text);
-          range.insertNode(textNode);
-
-          range.setStartAfter(textNode);
-          range.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(range);
-
-          skipNextInput = true;
-          skipNextRedaction = true;
-
-          element.dispatchEvent(new Event('input', { bubbles: true }));
-          element.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }
-    },
-    true
-  );
-
-  document.addEventListener(
-    'click',
-    (e: MouseEvent) => {
-      if (isRedacting) return;
-
-      const target = e.target as HTMLElement;
-      const submitButton = target.closest('button[data-testid="send-button"]');
-
-      if (submitButton) {
-        const textContent = getEditorText();
-
-        if (!textContent || !isEnabled) {
-          return;
-        }
-
-        const result = redact(textContent, rules);
-        log(
-          `Button clicked - Text: "${textContent}", Redacted: "${result.text}", Rules applied: ${result.appliedRules.length}`
-        );
-
-        if (result.appliedRules.length > 0) {
-          log(`Button clicked - Preventing and redacting: "${textContent}" → "${result.text}"`);
-
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-
-          isRedacting = true;
-
-          element.innerHTML = '<p></p>';
-          element.focus();
-
-          const paragraph = element.querySelector('p');
-          if (paragraph) {
-            paragraph.textContent = result.text;
-          }
-
-          element.dispatchEvent(new Event('input', { bubbles: true }));
-          element.dispatchEvent(new Event('change', { bubbles: true }));
-
-          setTimeout(() => {
-            log('Resubmitting with button click');
-            isRedacting = false;
-            (submitButton as HTMLButtonElement).click();
-          }, 100);
-        }
-      }
-    },
-    true
-  );
+    }
+  }, true);
 
   log('ProseMirror interception setup complete');
 }
 
 /**
- * Set up interception for textarea input 
+ * Set up interception for textarea input
  */
 function setupTextareaInterception(textarea: HTMLTextAreaElement): void {
   log('Setting up textarea interception');
 
+  // Clean up any existing listeners before adding new ones
+  listenerManager.cleanup();
+
   let isRedacting = false;
   let skipNextInput = false;
 
-  textarea.addEventListener(
-    'input',
-    () => {
-      if (skipNextInput) {
-        skipNextInput = false;
+  listenerManager.addEventListener(textarea, 'input', () => {
+    if (skipNextInput) {
+      skipNextInput = false;
+      return;
+    }
+
+    const currentText = textarea.value;
+
+    if (!isEnabled || rules.length === 0) {
+      return;
+    }
+
+    const result = redact(currentText, rules);
+
+    if (result.appliedRules.length > 0) {
+      log(`Real-time redaction: "${currentText}" → "${result.text}"`);
+
+      const cursorPosition = textarea.selectionStart;
+      const lengthDiff = result.text.length - currentText.length;
+
+      textarea.value = result.text;
+
+      const newPosition = Math.max(0, Math.min(cursorPosition + lengthDiff, result.text.length));
+      textarea.setSelectionRange(newPosition, newPosition);
+
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }, true);
+
+  listenerManager.addEventListener(textarea, 'paste', (e: Event) => {
+    const clipboardEvent = e as ClipboardEvent;
+    if (!isEnabled || rules.length === 0) {
+      return;
+    }
+
+    const pastedText = clipboardEvent.clipboardData?.getData('text/plain') || '';
+
+    if (!pastedText) {
+      return;
+    }
+
+    const result = redact(pastedText, rules);
+
+    if (result.appliedRules.length > 0) {
+      log(`Paste detected - Redacting: "${pastedText}" → "${result.text}"`);
+
+      e.preventDefault();
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = textarea.value;
+
+      const newValue = currentValue.substring(0, start) + result.text + currentValue.substring(end);
+      textarea.value = newValue;
+
+      const newPosition = start + result.text.length;
+      textarea.setSelectionRange(newPosition, newPosition);
+
+      skipNextInput = true;
+
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }, true);
+
+  listenerManager.addEventListener(document, 'click', (e: Event) => {
+    const mouseEvent = e as MouseEvent;
+    if (isRedacting) return;
+
+    const target = mouseEvent.target as HTMLElement;
+    const submitButton = target.closest('button[data-testid="send-button"]');
+
+    if (submitButton) {
+      const textContent = textarea.value;
+
+      if (!textContent || !isEnabled) {
         return;
       }
 
-      const currentText = textarea.value;
-
-      if (!isEnabled || rules.length === 0) {
-        return;
-      }
-
-      const result = redact(currentText, rules);
+      const result = redact(textContent, rules);
+      log(
+        `Button clicked - Text: "${textContent}", Redacted: "${result.text}", Rules applied: ${result.appliedRules.length}`
+      );
 
       if (result.appliedRules.length > 0) {
-        log(`Real-time redaction: "${currentText}" → "${result.text}"`);
-
-        const cursorPosition = textarea.selectionStart;
-        const lengthDiff = result.text.length - currentText.length;
-
-        textarea.value = result.text;
-
-        const newPosition = Math.max(0, Math.min(cursorPosition + lengthDiff, result.text.length));
-        textarea.setSelectionRange(newPosition, newPosition);
-
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    },
-    true
-  );
-
-  textarea.addEventListener(
-    'paste',
-    (e: ClipboardEvent) => {
-      if (!isEnabled || rules.length === 0) {
-        return;
-      }
-
-      const pastedText = e.clipboardData?.getData('text/plain') || '';
-
-      if (!pastedText) {
-        return;
-      }
-
-      const result = redact(pastedText, rules);
-
-      if (result.appliedRules.length > 0) {
-        log(`Paste detected - Redacting: "${pastedText}" → "${result.text}"`);
+        log(`Button clicked - Preventing and redacting: "${textContent}" → "${result.text}"`);
 
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
 
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const currentValue = textarea.value;
+        isRedacting = true;
 
-        const newValue = currentValue.substring(0, start) + result.text + currentValue.substring(end);
-        textarea.value = newValue;
-
-        const newPosition = start + result.text.length;
-        textarea.setSelectionRange(newPosition, newPosition);
-
-        skipNextInput = true;
+        textarea.value = result.text;
+        textarea.focus();
 
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.dispatchEvent(new Event('change', { bubbles: true }));
+
+        setTimeout(() => {
+          log('Resubmitting with button click');
+          isRedacting = false;
+          (submitButton as HTMLButtonElement).click();
+        }, 100);
       }
-    },
-    true
-  );
-
-  document.addEventListener(
-    'click',
-    (e: MouseEvent) => {
-      if (isRedacting) return;
-
-      const target = e.target as HTMLElement;
-      const submitButton = target.closest('button[data-testid="send-button"]');
-
-      if (submitButton) {
-        const textContent = textarea.value;
-
-        if (!textContent || !isEnabled) {
-          return;
-        }
-
-        const result = redact(textContent, rules);
-        log(
-          `Button clicked - Text: "${textContent}", Redacted: "${result.text}", Rules applied: ${result.appliedRules.length}`
-        );
-
-        if (result.appliedRules.length > 0) {
-          log(`Button clicked - Preventing and redacting: "${textContent}" → "${result.text}"`);
-
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-
-          isRedacting = true;
-
-          textarea.value = result.text;
-          textarea.focus();
-
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          textarea.dispatchEvent(new Event('change', { bubbles: true }));
-
-          setTimeout(() => {
-            log('Resubmitting with button click');
-            isRedacting = false;
-            (submitButton as HTMLButtonElement).click();
-          }, 100);
-        }
-      }
-    },
-    true
-  );
+    }
+  }, true);
 
   log('Textarea interception setup complete');
 }

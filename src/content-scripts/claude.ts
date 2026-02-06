@@ -9,6 +9,7 @@ import {
   logError,
   isSiteEnabled,
   updateSiteLastUsed,
+  ListenerManager,
 } from './shared/utils';
 import { EditModeMonitor, type EditModeConfig } from './shared/edit-mode-monitor';
 
@@ -30,6 +31,9 @@ const EDIT_MODE_CONFIG: EditModeConfig = {
 let rules: Rule[] = [];
 let isEnabled = false;
 let editModeMonitor: EditModeMonitor | null = null;
+
+// Listener manager for automatic cleanup of event listeners
+const listenerManager = new ListenerManager();
 
 // WeakSet for atomic tracking of initialized elements (prevents race conditions)
 const initializedElements = new WeakSet<HTMLElement>();
@@ -104,6 +108,9 @@ async function setupInputRedaction(): Promise<void> {
 function setupClaudeInterception(element: HTMLDivElement): void {
    log('Setting up Claude interception');
 
+   // Clean up any existing listeners before adding new ones
+   listenerManager.cleanup();
+
    let isRedacting = false;
    let skipNextInput = false;
    let skipNextRedaction = false;
@@ -124,7 +131,7 @@ function setupClaudeInterception(element: HTMLDivElement): void {
 
    let lastCapturedText = '';
 
-   element.addEventListener('beforeinput', (e: Event) => {
+   listenerManager.addEventListener(element, 'beforeinput', (e: Event) => {
      const beforeInputEvent = e as InputEvent;
      log(`beforeinput event fired - inputType: ${beforeInputEvent.inputType}`);
      if (beforeInputEvent.inputType === 'insertLineBreak') {
@@ -133,7 +140,7 @@ function setupClaudeInterception(element: HTMLDivElement): void {
      }
    }, true);
 
-   element.addEventListener('input', () => {
+   listenerManager.addEventListener(element, 'input', () => {
      if (skipNextInput) {
        skipNextInput = false;
        return;
@@ -158,7 +165,7 @@ function setupClaudeInterception(element: HTMLDivElement): void {
 
        const selection = window.getSelection();
        let cursorOffset = 0;
-       
+
        if (selection && selection.rangeCount > 0) {
          const range = selection.getRangeAt(0);
          const preCaretRange = range.cloneRange();
@@ -179,13 +186,13 @@ function setupClaudeInterception(element: HTMLDivElement): void {
        if (newSelection && paragraph) {
          const range = document.createRange();
          const textNode = paragraph.firstChild;
-         
+
          if (textNode) {
            let newOffset = cursorOffset + lengthDiff;
-           
+
            const maxOffset = textNode.textContent?.length || 0;
            newOffset = Math.max(0, Math.min(newOffset, maxOffset));
-           
+
            range.setStart(textNode, newOffset);
            range.collapse(true);
            newSelection.removeAllRanges();
@@ -200,13 +207,14 @@ function setupClaudeInterception(element: HTMLDivElement): void {
      }
    }, true);
 
-   element.addEventListener('paste', (e: ClipboardEvent) => {
+   listenerManager.addEventListener(element, 'paste', (e: Event) => {
+     const clipboardEvent = e as ClipboardEvent;
      if (!isEnabled || rules.length === 0) {
        return;
      }
 
-     const pastedText = e.clipboardData?.getData('text/plain') || '';
-     
+     const pastedText = clipboardEvent.clipboardData?.getData('text/plain') || '';
+
      if (!pastedText) {
        return;
      }
@@ -221,30 +229,31 @@ function setupClaudeInterception(element: HTMLDivElement): void {
        const selection = window.getSelection();
        if (selection && selection.rangeCount > 0) {
          const range = selection.getRangeAt(0);
-         
+
          range.deleteContents();
-         
+
          const textNode = document.createTextNode(result.text);
          range.insertNode(textNode);
-         
+
          range.setStartAfter(textNode);
          range.collapse(true);
          selection.removeAllRanges();
          selection.addRange(range);
-         
+
          skipNextInput = true;
          skipNextRedaction = true;
-         
+
          element.dispatchEvent(new Event('input', { bubbles: true }));
          element.dispatchEvent(new Event('change', { bubbles: true }));
        }
      }
    }, true);
 
-  document.addEventListener('click', (e: MouseEvent) => {
+  listenerManager.addEventListener(document, 'click', (e: Event) => {
+    const mouseEvent = e as MouseEvent;
     if (isRedacting) return;
 
-    const target = e.target as HTMLElement;
+    const target = mouseEvent.target as HTMLElement;
     const submitButton = target.closest('button[aria-label="Send message"]');
 
     if (submitButton) {

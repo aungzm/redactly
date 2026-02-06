@@ -9,6 +9,7 @@ import {
   logError,
   isSiteEnabled,
   updateSiteLastUsed,
+  ListenerManager,
 } from './shared/utils';
 import { EditModeMonitor, type EditModeConfig } from './shared/edit-mode-monitor';
 
@@ -30,6 +31,9 @@ const EDIT_MODE_CONFIG: EditModeConfig = {
 let rules: Rule[] = [];
 let isEnabled = false;
 let editModeMonitor: EditModeMonitor | null = null;
+
+// Listener manager for automatic cleanup of event listeners
+const listenerManager = new ListenerManager();
 
 // WeakSet for atomic tracking of initialized elements (prevents race conditions)
 const initializedElements = new WeakSet<HTMLElement>();
@@ -104,125 +108,118 @@ async function setupInputRedaction(): Promise<void> {
 function setupTextareaInterception(textarea: HTMLTextAreaElement): void {
   log('Setting up textarea interception');
 
+  // Clean up any existing listeners before adding new ones
+  listenerManager.cleanup();
+
   let isRedacting = false;
   let skipNextInput = false;
 
-  textarea.addEventListener(
-    'input',
-    () => {
-      if (skipNextInput) {
-        skipNextInput = false;
+  listenerManager.addEventListener(textarea, 'input', () => {
+    if (skipNextInput) {
+      skipNextInput = false;
+      return;
+    }
+
+    const currentText = textarea.value;
+
+    if (!isEnabled || rules.length === 0) {
+      return;
+    }
+
+    const result = redact(currentText, rules);
+
+    if (result.appliedRules.length > 0) {
+      log(`Real-time redaction: "${currentText}" → "${result.text}"`);
+
+      const cursorPosition = textarea.selectionStart;
+      const lengthDiff = result.text.length - currentText.length;
+
+      textarea.value = result.text;
+
+      const newPosition = Math.max(0, Math.min(cursorPosition + lengthDiff, result.text.length));
+      textarea.setSelectionRange(newPosition, newPosition);
+
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }, true);
+
+  listenerManager.addEventListener(textarea, 'paste', (e: Event) => {
+    const clipboardEvent = e as ClipboardEvent;
+    if (!isEnabled || rules.length === 0) {
+      return;
+    }
+
+    const pastedText = clipboardEvent.clipboardData?.getData('text/plain') || '';
+
+    if (!pastedText) {
+      return;
+    }
+
+    const result = redact(pastedText, rules);
+
+    if (result.appliedRules.length > 0) {
+      log(`Paste detected - Redacting: "${pastedText}" → "${result.text}"`);
+
+      e.preventDefault();
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = textarea.value;
+
+      const newValue = currentValue.substring(0, start) + result.text + currentValue.substring(end);
+      textarea.value = newValue;
+
+      const newPosition = start + result.text.length;
+      textarea.setSelectionRange(newPosition, newPosition);
+
+      skipNextInput = true;
+
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }, true);
+
+  listenerManager.addEventListener(document, 'click', (e: Event) => {
+    const mouseEvent = e as MouseEvent;
+    if (isRedacting) return;
+
+    const target = mouseEvent.target as HTMLElement;
+    const submitButton = target.closest('button[type="submit"]');
+
+    if (submitButton) {
+      const textContent = textarea.value;
+
+      if (!textContent || !isEnabled) {
         return;
       }
 
-      const currentText = textarea.value;
-
-      if (!isEnabled || rules.length === 0) {
-        return;
-      }
-
-      const result = redact(currentText, rules);
+      const result = redact(textContent, rules);
+      log(
+        `Button clicked - Text: "${textContent}", Redacted: "${result.text}", Rules applied: ${result.appliedRules.length}`
+      );
 
       if (result.appliedRules.length > 0) {
-        log(`Real-time redaction: "${currentText}" → "${result.text}"`);
-
-        const cursorPosition = textarea.selectionStart;
-        const lengthDiff = result.text.length - currentText.length;
-
-        textarea.value = result.text;
-
-        const newPosition = Math.max(0, Math.min(cursorPosition + lengthDiff, result.text.length));
-        textarea.setSelectionRange(newPosition, newPosition);
-
-        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    },
-    true
-  );
-
-  textarea.addEventListener(
-    'paste',
-    (e: ClipboardEvent) => {
-      if (!isEnabled || rules.length === 0) {
-        return;
-      }
-
-      const pastedText = e.clipboardData?.getData('text/plain') || '';
-
-      if (!pastedText) {
-        return;
-      }
-
-      const result = redact(pastedText, rules);
-
-      if (result.appliedRules.length > 0) {
-        log(`Paste detected - Redacting: "${pastedText}" → "${result.text}"`);
+        log(`Button clicked - Preventing and redacting: "${textContent}" → "${result.text}"`);
 
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
 
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const currentValue = textarea.value;
+        isRedacting = true;
 
-        const newValue = currentValue.substring(0, start) + result.text + currentValue.substring(end);
-        textarea.value = newValue;
-
-        const newPosition = start + result.text.length;
-        textarea.setSelectionRange(newPosition, newPosition);
-
-        skipNextInput = true;
+        textarea.value = result.text;
+        textarea.focus();
 
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.dispatchEvent(new Event('change', { bubbles: true }));
+
+        setTimeout(() => {
+          log('Resubmitting with button click');
+          isRedacting = false;
+          (submitButton as HTMLButtonElement).click();
+        }, 100);
       }
-    },
-    true
-  );
-
-  document.addEventListener(
-    'click',
-    (e: MouseEvent) => {
-      if (isRedacting) return;
-
-      const target = e.target as HTMLElement;
-      const submitButton = target.closest('button[type="submit"]');
-
-      if (submitButton) {
-        const textContent = textarea.value;
-
-        if (!textContent || !isEnabled) {
-          return;
-        }
-
-        const result = redact(textContent, rules);
-        log(
-          `Button clicked - Text: "${textContent}", Redacted: "${result.text}", Rules applied: ${result.appliedRules.length}`
-        );
-
-        if (result.appliedRules.length > 0) {
-          log(`Button clicked - Preventing and redacting: "${textContent}" → "${result.text}"`);
-
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
-
-          isRedacting = true;
-
-          textarea.value = result.text;
-          textarea.focus();
-
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          textarea.dispatchEvent(new Event('change', { bubbles: true }));
-
-          setTimeout(() => {
-            log('Resubmitting with button click');
-            isRedacting = false;
-            (submitButton as HTMLButtonElement).click();
-          }, 100);
-        }
-      }
-    },
-    true
-  );
+    }
+  }, true);
 
   log('Textarea interception setup complete');
 }
